@@ -3,17 +3,19 @@ import { clsx } from 'clsx';
 import { MapPin, Building2, Calendar, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ATDemo, ICONES_PERMIS } from './demo.data';
+import type { ATView } from '../../types/dashboardView';
+import { ICONES_PERMIS } from '../../types/dashboardView';
+import { StatutPermis } from '../../types';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  at: ATDemo;
+  at: ATView;
   isDragging: boolean;
-  onDragStart: (at: ATDemo) => void;
+  onDragStart: (at: ATView) => void;
   onDragEnd: () => void;
   canDrag: boolean; // false si rôle ne peut rien faire sur cette AT
-  onClick: (at: ATDemo) => void;
+  onClick: (at: ATView) => void;
 }
 
 // ── Couleurs risque ───────────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ const RISQUE_LABEL: Record<string, string> = {
 // ── Composant ─────────────────────────────────────────────────────────────────
 
 export const KanbanCard = memo(function KanbanCard({ at, isDragging, onDragStart, onDragEnd, canDrag, onClick }: Props) {
-  const validesCount  = at.permis.filter(p => p.statut === 'VALIDE').length;
+  const validesCount  = at.permis.filter(p => p.statut === StatutPermis.VALIDE).length;
   const totalPermis   = at.permis.length;
 
   const dateDebut = (() => {
@@ -109,10 +111,10 @@ export const KanbanCard = memo(function KanbanCard({ at, isDragging, onDragStart
                   title={`${ICONES_PERMIS[p.type_permis]} ${p.statut}`}
                   className={clsx(
                     'w-2 h-2 rounded-full flex-shrink-0',
-                    p.statut === 'VALIDE'     ? 'bg-green-500' :
-                    p.statut === 'EN_ATTENTE' ? 'bg-blue-400' :
-                    p.statut === 'REJETE'     ? 'bg-red-400' :
-                    p.statut === 'SUSPENDU'   ? 'bg-orange-400' :
+                    p.statut === StatutPermis.VALIDE     ? 'bg-green-500' :
+                    p.statut === StatutPermis.EN_ATTENTE ? 'bg-blue-400' :
+                    p.statut === StatutPermis.REJETE     ? 'bg-red-400' :
+                    p.statut === StatutPermis.SUSPENDU   ? 'bg-orange-400' :
                     'bg-[var(--text-muted)]',
                   )}
                 />

@@ -2,29 +2,29 @@ import { useState } from 'react';
 import {
   Building2, Calendar, MapPin, Users,
   ClipboardCheck, AlertTriangle, Activity,
-  UserCheck, UserX, CheckCircle2,
+  UserCheck, UserX,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ATDemo } from './demo.data';
+import type { ATView } from '../../types/dashboardView';
 import { BadgeRisque } from './DashboardAnimateur';
 import { PermisChip } from './DashboardAnimateur';
 import { SuspensionModal, SuspensionFormData } from './SuspensionModal';
 import { AuditModal, AuditFormData } from './AuditModal';
+import type { PTWActions } from '../../hooks/usePTWActions';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  at: ATDemo;
+  at: ATView;
+  actions: PTWActions;
 }
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 
-export function ATActiveCard({ at }: Props) {
+export function ATActiveCard({ at, actions }: Props) {
   const [modalOuvert, setModalOuvert] = useState<'audit' | 'suspension' | null>(null);
-  const [suspendue, setSuspendue] = useState(false);
-  const [auditEnregistre, setAuditEnregistre] = useState<AuditFormData | null>(null);
 
   // Calcul check-in temps réel
   const tousIntervenants = at.permis.flatMap(p => p.intervenants);
@@ -48,29 +48,17 @@ export function ATActiveCard({ at }: Props) {
     catch { return at.date_fin_prevue; }
   })();
 
-  function handleSuspension(data: SuspensionFormData) {
-    console.log('Suspension AT :', at.numero_at, data);
-    setSuspendue(true);
-    setModalOuvert(null);
+  async function handleSuspension(data: SuspensionFormData) {
+    const ok = await actions.suspendreAT(at.id, data);
+    if (ok) setModalOuvert(null);
   }
 
-  function handleAudit(data: AuditFormData) {
-    console.log('Audit AT :', at.numero_at, data);
-    setAuditEnregistre(data);
-    setModalOuvert(null);
+  async function handleAudit(data: AuditFormData) {
+    const ok = await actions.creerAuditTerrain(at.id, data);
+    if (ok) setModalOuvert(null);
   }
 
-  if (suspendue) {
-    return (
-      <div className="bg-safety-50 border border-safety-200 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
-        <AlertTriangle size={20} className="text-safety-500 flex-shrink-0" />
-        <div className="flex-1">
-          <p className="font-semibold text-[color:var(--badge-safety-text)]">{at.titre}</p>
-          <p className="text-xs text-[color:var(--badge-safety-text)] mt-0.5">{at.numero_at} · AT suspendue — en attente de levée</p>
-        </div>
-      </div>
-    );
-  }
+  const dernierAudit = at.audits.length > 0 ? at.audits[at.audits.length - 1] : null;
 
   return (
     <>
@@ -184,29 +172,15 @@ export function ATActiveCard({ at }: Props) {
         </div>
 
         {/* ── Audit récent ── */}
-        {(at.audits.length > 0 || auditEnregistre) && (
+        {dernierAudit && (
           <div className="px-5 py-3 bg-[var(--bg-hover)] border-b border-[var(--border)]">
-            {auditEnregistre ? (
-              <div className={clsx(
-                'flex items-center gap-2 text-sm rounded-lg px-3 py-2 border',
-                auditEnregistre.resultat === 'CONFORME'          ? 'bg-success-50 border-success-200 text-[color:var(--badge-success-text)]' :
-                auditEnregistre.resultat === 'CONFORME_RESERVES' ? 'bg-amber-50 border-amber-200 text-[color:var(--badge-amber-text)]' :
-                'bg-danger-50 border-danger-200 text-[color:var(--badge-danger-text)]',
-              )}>
-                <CheckCircle2 size={14} className="flex-shrink-0" />
-                <span className="font-medium">Audit enregistré</span>
-                <span className="opacity-70">·</span>
-                <span className="truncate">{auditEnregistre.observations}</span>
-              </div>
-            ) : at.audits.length > 0 ? (
-              <div className="flex items-center gap-2 text-xs text-[color:var(--text-secondary)]">
-                <ClipboardCheck size={13} className="text-[color:var(--text-muted)] flex-shrink-0" />
-                <span>
-                  Dernier audit : <strong className="text-[color:var(--text-secondary)]">{at.audits[at.audits.length - 1].resultat}</strong>
-                  {' '}· {at.audits[at.audits.length - 1].auditeur_nom}
-                </span>
-              </div>
-            ) : null}
+            <div className="flex items-center gap-2 text-xs text-[color:var(--text-secondary)]">
+              <ClipboardCheck size={13} className="text-[color:var(--text-muted)] flex-shrink-0" />
+              <span>
+                Dernier audit : <strong className="text-[color:var(--text-secondary)]">{dernierAudit.resultat}</strong>
+                {' '}· {dernierAudit.auditeur_nom}
+              </span>
+            </div>
           </div>
         )}
 

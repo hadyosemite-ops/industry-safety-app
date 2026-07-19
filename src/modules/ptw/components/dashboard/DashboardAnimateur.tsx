@@ -5,18 +5,18 @@ import {
   LayoutList, LayoutDashboard, QrCode,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import {
-  AT_DEMO, ATDemo, PermisDemo,
-  ICONES_PERMIS, LABELS_PERMIS,
-} from './demo.data';
+import type { ATView, PermisView } from '../../types/dashboardView';
+import { ICONES_PERMIS, LABELS_PERMIS } from '../../types/dashboardView';
+import { StatutAT, StatutPermis, type NiveauRisque } from '../../types';
 import { Link } from 'react-router-dom';
 import { ATValidationCard } from './ATValidationCard';
 import { ATActiveCard } from './ATActiveCard';
 import { ATSuspenduCard } from './ATSuspenduCard';
 import { KanbanView } from './KanbanView';
-import type { StatutATDemo } from './demo.data';
 import { KpiCard, KpiGrid } from '@/components/ui/KpiCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useAuth } from '@/contexts/AuthContext';
+import type { PTWActions } from '../../hooks/usePTWActions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,14 +32,15 @@ export interface ValidationAction {
 
 // ── Badge statut AT ────────────────────────────────────────────────────────────
 
-export function BadgeStatutAT({ statut }: { statut: ATDemo['statut'] }) {
-  const cfg: Record<ATDemo['statut'], { label: string; cls: string }> = {
-    SOUMISE:   { label: 'À valider',  cls: 'bg-navy-50 text-[color:var(--badge-navy-text)] border-navy-200' },
-    VALIDEE:   { label: 'Validée',    cls: 'bg-teal-500/10 text-[color:var(--badge-teal-text)] border-teal-400/30' },
-    APPROUVEE: { label: 'Approuvée',  cls: 'bg-violet-500/10 text-[color:var(--badge-purple-text)] border-violet-400/30' },
-    ACTIVE:    { label: 'Active',     cls: 'bg-success-50 text-[color:var(--badge-success-text)] border-success-200' },
-    SUSPENDUE: { label: 'Suspendue',  cls: 'bg-safety-50 text-[color:var(--badge-safety-text)] border-safety-200' },
-    CLOTUREE:  { label: 'Clôturée',   cls: 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]' },
+export function BadgeStatutAT({ statut }: { statut: StatutAT }) {
+  const cfg: Record<StatutAT, { label: string; cls: string }> = {
+    [StatutAT.BROUILLON]: { label: 'Brouillon', cls: 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]' },
+    [StatutAT.SOUMISE]:   { label: 'À valider',  cls: 'bg-navy-50 text-[color:var(--badge-navy-text)] border-navy-200' },
+    [StatutAT.VALIDEE]:   { label: 'Validée',    cls: 'bg-teal-500/10 text-[color:var(--badge-teal-text)] border-teal-400/30' },
+    [StatutAT.APPROUVEE]: { label: 'Approuvée',  cls: 'bg-violet-500/10 text-[color:var(--badge-purple-text)] border-violet-400/30' },
+    [StatutAT.ACTIVE]:    { label: 'Active',     cls: 'bg-success-50 text-[color:var(--badge-success-text)] border-success-200' },
+    [StatutAT.SUSPENDUE]: { label: 'Suspendue',  cls: 'bg-safety-50 text-[color:var(--badge-safety-text)] border-safety-200' },
+    [StatutAT.CLOTUREE]:  { label: 'Clôturée',   cls: 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]' },
   };
   const c = cfg[statut];
   return (
@@ -51,8 +52,8 @@ export function BadgeStatutAT({ statut }: { statut: ATDemo['statut'] }) {
 
 // ── Badge risque ──────────────────────────────────────────────────────────────
 
-export function BadgeRisque({ niveau }: { niveau: 'MODERE' | 'ELEVE' | 'CRITIQUE' }) {
-  const cfg = {
+export function BadgeRisque({ niveau }: { niveau: NiveauRisque }) {
+  const cfg: Record<NiveauRisque, { label: string; cls: string }> = {
     MODERE:   { label: 'Modéré',   cls: 'bg-success-50 text-[color:var(--badge-success-text)] border-success-200' },
     ELEVE:    { label: 'Élevé',    cls: 'bg-amber-50 text-[color:var(--badge-amber-text)] border-amber-200' },
     CRITIQUE: { label: 'Critique', cls: 'bg-danger-50 text-[color:var(--badge-danger-text)] border-danger-200' },
@@ -67,13 +68,13 @@ export function BadgeRisque({ niveau }: { niveau: 'MODERE' | 'ELEVE' | 'CRITIQUE
 
 // ── Badge statut permis ───────────────────────────────────────────────────────
 
-export function BadgePermis({ permis }: { permis: PermisDemo }) {
-  const cfg: Record<PermisDemo['statut'], { cls: string; label: string }> = {
-    EN_ATTENTE: { cls: 'bg-amber-50 text-[color:var(--badge-amber-text)] border-amber-200',   label: 'À valider' },
-    VALIDE:     { cls: 'bg-success-50 text-[color:var(--badge-success-text)] border-success-200', label: 'Validé'    },
-    REJETE:     { cls: 'bg-danger-50 text-[color:var(--badge-danger-text)] border-danger-200',    label: 'Rejeté'    },
-    SUSPENDU:   { cls: 'bg-safety-50 text-[color:var(--badge-safety-text)] border-safety-200',    label: 'Suspendu'  },
-    CLOS:       { cls: 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]', label: 'Clos'      },
+export function BadgePermis({ permis }: { permis: PermisView }) {
+  const cfg: Record<StatutPermis, { cls: string; label: string }> = {
+    [StatutPermis.EN_ATTENTE]: { cls: 'bg-amber-50 text-[color:var(--badge-amber-text)] border-amber-200',   label: 'À valider' },
+    [StatutPermis.VALIDE]:     { cls: 'bg-success-50 text-[color:var(--badge-success-text)] border-success-200', label: 'Validé'    },
+    [StatutPermis.REJETE]:     { cls: 'bg-danger-50 text-[color:var(--badge-danger-text)] border-danger-200',    label: 'Rejeté'    },
+    [StatutPermis.SUSPENDU]:   { cls: 'bg-safety-50 text-[color:var(--badge-safety-text)] border-safety-200',    label: 'Suspendu'  },
+    [StatutPermis.CLOS]:       { cls: 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]', label: 'Clos'      },
   };
   const c = cfg[permis.statut];
   return (
@@ -91,22 +92,22 @@ export function BadgePermis({ permis }: { permis: PermisDemo }) {
 export function PermisChip({
   permis, onClick, clickable,
 }: {
-  permis: PermisDemo; onClick?: () => void; clickable?: boolean;
+  permis: PermisView; onClick?: () => void; clickable?: boolean;
 }) {
-  const statusDot: Record<PermisDemo['statut'], string> = {
-    EN_ATTENTE: 'bg-amber-500',
-    VALIDE:     'bg-success-500',
-    REJETE:     'bg-danger-500',
-    SUSPENDU:   'bg-safety-500',
-    CLOS:       'bg-surface-600',
+  const statusDot: Record<StatutPermis, string> = {
+    [StatutPermis.EN_ATTENTE]: 'bg-amber-500',
+    [StatutPermis.VALIDE]:     'bg-success-500',
+    [StatutPermis.REJETE]:     'bg-danger-500',
+    [StatutPermis.SUSPENDU]:   'bg-safety-500',
+    [StatutPermis.CLOS]:       'bg-surface-600',
   };
   return (
     <div className={clsx(
       'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm w-full',
-      permis.statut === 'EN_ATTENTE' ? 'bg-amber-50 border-amber-200'    :
-      permis.statut === 'VALIDE'     ? 'bg-success-50 border-success-200'  :
-      permis.statut === 'SUSPENDU'   ? 'bg-safety-50 border-safety-200':
-      permis.statut === 'REJETE'     ? 'bg-danger-50 border-danger-200'      :
+      permis.statut === StatutPermis.EN_ATTENTE ? 'bg-amber-50 border-amber-200'    :
+      permis.statut === StatutPermis.VALIDE     ? 'bg-success-50 border-success-200'  :
+      permis.statut === StatutPermis.SUSPENDU   ? 'bg-safety-50 border-safety-200':
+      permis.statut === StatutPermis.REJETE     ? 'bg-danger-50 border-danger-200'      :
       'bg-[var(--bg-hover)] border-[var(--border)]',
     )}>
       <button
@@ -171,49 +172,54 @@ function VueToggle({ vue, onChange }: { vue: Vue; onChange: (v: Vue) => void }) 
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function DashboardAnimateur({ embedded = false }: { embedded?: boolean }) {
+interface Props {
+  embedded?: boolean;
+  ats: ATView[];
+  loading: boolean;
+  error: string | null;
+  actions: PTWActions;
+}
+
+export function DashboardAnimateur({ embedded = false, ats, loading, error, actions }: Props) {
+  const { profile } = useAuth();
   const [onglet,    setOnglet]    = useState<Onglet>('valider');
   const [vue,       setVue]       = useState<Vue>('liste');
   const [recherche, setRecherche] = useState('');
 
   const kpis = useMemo(() => ({
-    atValider:     AT_DEMO.filter(a => a.statut === 'SOUMISE').length,
-    permisValider: AT_DEMO.flatMap(a => a.permis).filter(p => p.statut === 'EN_ATTENTE').length,
-    atActives:     AT_DEMO.filter(a => a.statut === 'ACTIVE').length,
-    suspensions:   AT_DEMO.filter(a => a.statut === 'SUSPENDUE').length,
-  }), []);
+    atValider:     ats.filter(a => a.statut === StatutAT.SOUMISE).length,
+    permisValider: ats.flatMap(a => a.permis).filter(p => p.statut === StatutPermis.EN_ATTENTE).length,
+    atActives:     ats.filter(a => a.statut === StatutAT.ACTIVE).length,
+    suspensions:   ats.filter(a => a.statut === StatutAT.SUSPENDUE).length,
+  }), [ats]);
 
   const atFiltrees = useMemo(() => {
     const q = recherche.toLowerCase();
-    return AT_DEMO.filter(at =>
+    return ats.filter(at =>
       !q ||
       at.numero_at.toLowerCase().includes(q) ||
       at.titre.toLowerCase().includes(q) ||
       at.entreprise_intervenante.toLowerCase().includes(q) ||
       at.zone.toLowerCase().includes(q),
     );
-  }, [recherche]);
+  }, [recherche, ats]);
 
   const atAffichees = useMemo(() => {
     if (vue === 'kanban') return atFiltrees; // kanban affiche tout
     switch (onglet) {
-      case 'valider':    return atFiltrees.filter(a => a.statut === 'SOUMISE');
-      case 'actives':    return atFiltrees.filter(a => a.statut === 'ACTIVE');
-      case 'suspendues': return atFiltrees.filter(a => a.statut === 'SUSPENDUE');
+      case 'valider':    return atFiltrees.filter(a => a.statut === StatutAT.SOUMISE);
+      case 'actives':    return atFiltrees.filter(a => a.statut === StatutAT.ACTIVE);
+      case 'suspendues': return atFiltrees.filter(a => a.statut === StatutAT.SUSPENDUE);
       case 'toutes':     return atFiltrees;
     }
   }, [onglet, vue, atFiltrees]);
 
   const onglets: { id: Onglet; label: string; count: number; color?: string }[] = [
-    { id: 'valider',    label: 'À valider',  count: AT_DEMO.filter(a => a.statut === 'SOUMISE').length,   color: 'blue' },
-    { id: 'actives',    label: 'Actives',    count: AT_DEMO.filter(a => a.statut === 'ACTIVE').length,    color: 'green' },
-    { id: 'suspendues', label: 'Suspendues', count: AT_DEMO.filter(a => a.statut === 'SUSPENDUE').length, color: 'orange' },
-    { id: 'toutes',     label: 'Toutes',     count: AT_DEMO.length },
+    { id: 'valider',    label: 'À valider',  count: ats.filter(a => a.statut === StatutAT.SOUMISE).length,   color: 'blue' },
+    { id: 'actives',    label: 'Actives',    count: ats.filter(a => a.statut === StatutAT.ACTIVE).length,    color: 'green' },
+    { id: 'suspendues', label: 'Suspendues', count: ats.filter(a => a.statut === StatutAT.SUSPENDUE).length, color: 'orange' },
+    { id: 'toutes',     label: 'Toutes',     count: ats.length },
   ];
-
-  function handleKanbanTransition(atId: string, newStatut: StatutATDemo) {
-    console.log('Kanban transition Animateur :', atId, '→', newStatut);
-  }
 
   return (
     <div className={embedded ? '' : 'min-h-screen bg-[#020817]'}>
@@ -233,7 +239,7 @@ export function DashboardAnimateur({ embedded = false }: { embedded?: boolean })
             </div>
             <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-1.5">
               <User size={14} className="text-white/70" />
-              <span className="text-white text-sm font-medium">Sophie Martin</span>
+              <span className="text-white text-sm font-medium">{profile ? `${profile.prenom} ${profile.nom}` : ''}</span>
               <span className="bg-emerald-400/20 text-emerald-300 text-xs px-2 py-0.5 rounded-full font-medium">Animateur</span>
             </div>
           </div>
@@ -246,12 +252,20 @@ export function DashboardAnimateur({ embedded = false }: { embedded?: boolean })
         vue === 'kanban' ? 'max-w-full' : 'max-w-5xl',
       )}>
 
+        {/* ── Erreur de chargement ── */}
+        {error && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-danger-200 bg-danger-50 text-sm text-[color:var(--badge-danger-text)]">
+            <AlertTriangle size={15} className="flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
         {/* ── KPIs ── */}
         <KpiGrid cols={4}>
-          <KpiCard icon={ClipboardList} label="AT à valider"     color="navy"    value={kpis.atValider}    sub="en attente animateur" />
-          <KpiCard icon={CheckCircle2}  label="Permis en attente" color="amber"   value={kpis.permisValider} sub="validation requise"   />
-          <KpiCard icon={Activity}      label="AT actives"        color="success" value={kpis.atActives}    sub="travaux en cours"      />
-          <KpiCard icon={AlertTriangle} label="Suspensions"       color="safety"  value={kpis.suspensions}  sub="AT arrêtées"           />
+          <KpiCard icon={ClipboardList} label="AT à valider"     color="navy"    value={kpis.atValider}    sub="en attente animateur" loading={loading} />
+          <KpiCard icon={CheckCircle2}  label="Permis en attente" color="amber"   value={kpis.permisValider} sub="validation requise"   loading={loading} />
+          <KpiCard icon={Activity}      label="AT actives"        color="success" value={kpis.atActives}    sub="travaux en cours"      loading={loading} />
+          <KpiCard icon={AlertTriangle} label="Suspensions"       color="safety"  value={kpis.suspensions}  sub="AT arrêtées"           loading={loading} />
         </KpiGrid>
 
         {/* ── Recherche + toggle vue ── */}
@@ -305,7 +319,7 @@ export function DashboardAnimateur({ embedded = false }: { embedded?: boolean })
           <KanbanView
             ats={atAffichees}
             role="ANIMATEUR"
-            onTransition={handleKanbanTransition}
+            actions={actions}
           />
         ) : (
           <div className="space-y-3">
@@ -321,9 +335,9 @@ export function DashboardAnimateur({ embedded = false }: { embedded?: boolean })
               </div>
             ) : (
               atAffichees.map(at => {
-                if (at.statut === 'SOUMISE')   return <ATValidationCard key={at.id} at={at} />;
-                if (at.statut === 'ACTIVE')    return <ATActiveCard     key={at.id} at={at} />;
-                if (at.statut === 'SUSPENDUE') return <ATSuspenduCard   key={at.id} at={at} />;
+                if (at.statut === StatutAT.SOUMISE)   return <ATValidationCard key={at.id} at={at} actions={actions} />;
+                if (at.statut === StatutAT.ACTIVE)    return <ATActiveCard     key={at.id} at={at} actions={actions} />;
+                if (at.statut === StatutAT.SUSPENDUE) return <ATSuspenduCard   key={at.id} at={at} actions={actions} />;
                 return (
                   <div key={at.id} className="card p-4 flex items-center gap-4">
                     <Clock size={16} className="text-[color:var(--text-secondary)] flex-shrink-0" />

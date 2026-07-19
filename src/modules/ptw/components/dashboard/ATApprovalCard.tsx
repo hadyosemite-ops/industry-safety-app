@@ -7,20 +7,21 @@ import {
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ATDemo, PermisDemo, LABELS_PERMIS, ICONES_PERMIS } from './demo.data';
+import type { ATView, PermisView } from '../../types/dashboardView';
+import { LABELS_PERMIS, ICONES_PERMIS } from '../../types/dashboardView';
 import { BadgeRisque } from './DashboardAnimateur';
+import type { PTWActions } from '../../hooks/usePTWActions';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  at: ATDemo;
-  onApprouver: (atId: string, commentaire: string) => void;
-  onRefuser:   (atId: string, motif: string) => void;
+  at: ATView;
+  actions: PTWActions;
 }
 
 // ── Sous-composant : Carte permis validé ──────────────────────────────────────
 
-function PermisValideRow({ permis }: { permis: PermisDemo }) {
+function PermisValideRow({ permis }: { permis: PermisView }) {
   const [open, setOpen] = useState(false);
 
   const nbOui = permis.checklist_reponses.filter(r => r.reponse === 'OUI').length;
@@ -36,12 +37,11 @@ function PermisValideRow({ permis }: { permis: PermisDemo }) {
         <span className="text-lg leading-none">{ICONES_PERMIS[permis.type_permis]}</span>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[color:var(--text-primary)]">{LABELS_PERMIS[permis.type_permis]}</p>
-          <p className="text-xs text-[color:var(--text-secondary)] mt-0.5 truncate">
-            Validé par <strong className="text-[color:var(--text-primary)]">{permis.valide_par}</strong>
-            {permis.valide_le && (
-              <> · {format(new Date(permis.valide_le), "dd MMM 'à' HH:mm", { locale: fr })}</>
-            )}
-          </p>
+          {permis.valide_le && (
+            <p className="text-xs text-[color:var(--text-secondary)] mt-0.5 truncate">
+              Validé le {format(new Date(permis.valide_le), "dd MMM 'à' HH:mm", { locale: fr })}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-xs text-[color:var(--badge-success-text)] bg-success-100 border border-success-200 px-2 py-0.5 rounded-full font-semibold">
@@ -107,12 +107,13 @@ function PermisValideRow({ permis }: { permis: PermisDemo }) {
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function ATApprovalCard({ at, onApprouver, onRefuser }: Props) {
+export function ATApprovalCard({ at, actions }: Props) {
   const [action, setAction]       = useState<'idle' | 'approuver' | 'refuser'>('idle');
   const [commentaire, setCommentaire] = useState('');
   const [motif, setMotif]         = useState('');
   const [errMotif, setErrMotif]   = useState('');
   const [dangerOpen, setDangerOpen] = useState(false);
+  const [enCours, setEnCours] = useState(false);
 
   const totalIntervenants = at.permis.reduce(
     (acc, p) => acc + new Set(p.intervenants.map(i => i.id)).size, 0,
@@ -127,13 +128,18 @@ export function ATApprovalCard({ at, onApprouver, onRefuser }: Props) {
     catch { return at.date_fin_prevue; }
   })();
 
-  function handleConfirmerApprobation() {
-    onApprouver(at.id, commentaire);
+  async function handleConfirmerApprobation() {
+    setEnCours(true);
+    const ok = await actions.approuverAT(at.id, commentaire);
+    setEnCours(false);
+    if (ok) setAction('idle');
   }
 
-  function handleConfirmerRefus() {
+  async function handleConfirmerRefus() {
     if (!motif.trim()) { setErrMotif('Le motif de refus est obligatoire.'); return; }
-    onRefuser(at.id, motif);
+    setEnCours(true);
+    await actions.refuserAT(at.id, motif);
+    setEnCours(false);
   }
 
   return (
@@ -316,16 +322,18 @@ export function ATApprovalCard({ at, onApprouver, onRefuser }: Props) {
               type="button"
               onClick={() => setAction('idle')}
               className="btn-ghost text-sm"
+              disabled={enCours}
             >
               Annuler
             </button>
             <button
               type="button"
               onClick={handleConfirmerApprobation}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-success-600 text-[#02101f] text-sm font-semibold hover:bg-success-500 transition-colors shadow-sm"
+              disabled={enCours}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-success-600 text-[#02101f] text-sm font-semibold hover:bg-success-500 transition-colors shadow-sm disabled:opacity-60"
             >
               <CheckCircle2 size={15} />
-              Confirmer l'approbation
+              {enCours ? 'Confirmation…' : "Confirmer l'approbation"}
             </button>
           </div>
         </div>
@@ -364,13 +372,15 @@ export function ATApprovalCard({ at, onApprouver, onRefuser }: Props) {
               type="button"
               onClick={() => { setAction('idle'); setErrMotif(''); }}
               className="btn-ghost text-sm"
+              disabled={enCours}
             >
               Annuler
             </button>
             <button
               type="button"
               onClick={handleConfirmerRefus}
-              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-danger-600 text-white text-sm font-semibold hover:bg-danger-500 transition-colors shadow-sm"
+              disabled={enCours}
+              className="flex items-center gap-2 px-5 py-2 rounded-xl bg-danger-600 text-white text-sm font-semibold hover:bg-danger-500 transition-colors shadow-sm disabled:opacity-60"
             >
               <XCircle size={15} />
               Confirmer le refus

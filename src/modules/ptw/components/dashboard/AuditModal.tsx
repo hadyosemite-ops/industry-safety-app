@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { X, ClipboardCheck, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
-import { ATDemo } from './demo.data';
+import type { ATView } from '../../types/dashboardView';
 import { useModalA11y } from '@/hooks/useModalA11y';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -10,7 +10,7 @@ type TypeAudit = 'PROGRAMME' | 'INOPINE';
 type ResultatAudit = 'CONFORME' | 'NON_CONFORME' | 'CONFORME_RESERVES';
 
 interface Props {
-  at: ATDemo;
+  at: ATView;
   onClose: () => void;
   onConfirmer: (data: AuditFormData) => void;
 }

@@ -1,26 +1,77 @@
+import { useEffect, useState } from 'react';
 import { Building2, MapPin, Calendar, Users, AlertTriangle, Shield } from 'lucide-react';
 import { FormField } from '@/components/ui/FormField';
 import { TagInput } from '@/components/ui/TagInput';
 import { NiveauRisque } from '../../types';
 import type { WizardFormData } from './ATCreationWizard';
 import { clsx } from 'clsx';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
-// ─── Données de référence (à remplacer par appels Supabase) ──────────────────
+// ─── Données de référence — chargées depuis Supabase (zones/animateurs du site) ─
 
-const ZONES_DEMO = [
-  { id: 'z1', code_zone: 'ATL-A', nom: 'Atelier A — Soudure', niveau_risque_defaut: NiveauRisque.ELEVE },
-  { id: 'z2', code_zone: 'ATL-B', nom: 'Atelier B — Usinage', niveau_risque_defaut: NiveauRisque.MODERE },
-  { id: 'z3', code_zone: 'EXT-1', nom: 'Zone Extérieure — Parking Camions', niveau_risque_defaut: NiveauRisque.MODERE },
-  { id: 'z4', code_zone: 'PROD-1', nom: 'Salle Production Principale', niveau_risque_defaut: NiveauRisque.CRITIQUE },
-  { id: 'z5', code_zone: 'CHAUD', nom: 'Chaufferie / Local Technique', niveau_risque_defaut: NiveauRisque.CRITIQUE },
-  { id: 'z6', code_zone: 'TOITURE', nom: 'Toiture — Accès Technique', niveau_risque_defaut: NiveauRisque.ELEVE },
-];
+interface ZoneOption {
+  id: string;
+  code_zone: string;
+  nom: string;
+  niveau_risque_defaut: NiveauRisque;
+}
 
-const ANIMATEURS_DEMO = [
-  { id: 'a1', nom: 'Martin', prenom: 'Sophie' },
-  { id: 'a2', nom: 'Dubois', prenom: 'Karim' },
-  { id: 'a3', nom: 'Bernard', prenom: 'Leila' },
-];
+interface AnimateurOption {
+  id: string;
+  nom: string;
+  prenom: string;
+}
+
+function useZones(siteId: string | undefined): { zones: ZoneOption[]; loading: boolean } {
+  const [zones, setZones] = useState<ZoneOption[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let annule = false;
+    if (!siteId) { setZones([]); setLoading(false); return; }
+    setLoading(true);
+    supabase
+      .from('zones')
+      .select('id, code_zone, nom, niveau_risque_defaut')
+      .eq('site_id', siteId)
+      .order('nom')
+      .then(({ data }) => {
+        if (annule) return;
+        setZones((data ?? []) as unknown as ZoneOption[]);
+        setLoading(false);
+      });
+    return () => { annule = true; };
+  }, [siteId]);
+
+  return { zones, loading };
+}
+
+function useAnimateurs(siteId: string | undefined): { animateurs: AnimateurOption[]; loading: boolean } {
+  const [animateurs, setAnimateurs] = useState<AnimateurOption[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let annule = false;
+    if (!siteId) { setAnimateurs([]); setLoading(false); return; }
+    setLoading(true);
+    supabase
+      .from('utilisateurs')
+      .select('id, nom, prenom')
+      .eq('site_id', siteId)
+      .eq('actif', true)
+      .contains('roles', ['ANIMATEUR_SECURITE'])
+      .order('nom')
+      .then(({ data }) => {
+        if (annule) return;
+        setAnimateurs((data ?? []) as unknown as AnimateurOption[]);
+        setLoading(false);
+      });
+    return () => { annule = true; };
+  }, [siteId]);
+
+  return { animateurs, loading };
+}
 
 const SUGGESTIONS_DANGERS = [
   'Risque de brûlure', 'Risque électrique', 'Risque de chute de hauteur',
@@ -81,7 +132,10 @@ interface Props {
 }
 
 export function StepInformationsGenerales({ data, erreurs, onChange }: Props) {
-  const zoneSelectionnee = ZONES_DEMO.find(z => z.id === data.zone_id);
+  const { profile } = useAuth();
+  const { zones } = useZones(profile?.site_id);
+  const { animateurs } = useAnimateurs(profile?.site_id);
+  const zoneSelectionnee = zones.find(z => z.id === data.zone_id);
 
   function patchRisques(patch: Partial<typeof data.evaluation_risques>) {
     onChange({ evaluation_risques: { ...data.evaluation_risques, ...patch } });
@@ -174,7 +228,7 @@ export function StepInformationsGenerales({ data, erreurs, onChange }: Props) {
             className={clsx('form-select', erreurs.zone_id && 'form-input-error')}
             value={data.zone_id}
             onChange={e => {
-              const z = ZONES_DEMO.find(z => z.id === e.target.value);
+              const z = zones.find(z => z.id === e.target.value);
               onChange({
                 zone_id: e.target.value,
                 evaluation_risques: {
@@ -185,7 +239,7 @@ export function StepInformationsGenerales({ data, erreurs, onChange }: Props) {
             }}
           >
             <option value="">— Sélectionner une zone —</option>
-            {ZONES_DEMO.map(z => (
+            {zones.map(z => (
               <option key={z.id} value={z.id}>
                 [{z.code_zone}] {z.nom}
               </option>
@@ -240,7 +294,7 @@ export function StepInformationsGenerales({ data, erreurs, onChange }: Props) {
             onChange={e => onChange({ animateur_id: e.target.value })}
           >
             <option value="">— À assigner ultérieurement —</option>
-            {ANIMATEURS_DEMO.map(a => (
+            {animateurs.map(a => (
               <option key={a.id} value={a.id}>{a.prenom} {a.nom}</option>
             ))}
           </select>

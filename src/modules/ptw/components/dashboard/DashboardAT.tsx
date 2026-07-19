@@ -13,15 +13,19 @@ import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { AT_DEMO, ATDemo } from './demo.data';
+import type { ATView } from '../../types/dashboardView';
+import { StatutAT } from '../../types';
 import { DashboardAnimateur } from './DashboardAnimateur';
 import { DashboardRespZone } from './DashboardRespZone';
 import { BadgeStatutAT, BadgeRisque } from './DashboardAnimateur';
 import { KanbanView, ATDetailModal } from './KanbanView';
 import { ModuleHeader } from '@/components/ui/ModuleHeader';
 import { KpiCard, KpiGrid } from '@/components/ui/KpiCard';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { AUDITS_DEMO } from '@/modules/audit/data/demo.data';
+import { useATDashboardData } from '../../hooks/useATDashboardData';
+import { usePTWActions } from '../../hooks/usePTWActions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -38,14 +42,14 @@ const STATUT_CONFIG: Record<string, { label: string; dot: string }> = {
   CLOTUREE:  { label: 'Clôturée',   dot: '#94a3b8' },
 };
 
-function RepartitionStatuts() {
+function RepartitionStatuts({ ats }: { ats: ATView[] }) {
   const repartition = useMemo(() => {
     const counts: Record<string, number> = {};
-    AT_DEMO.forEach(at => { counts[at.statut] = (counts[at.statut] ?? 0) + 1; });
+    ats.forEach(at => { counts[at.statut] = (counts[at.statut] ?? 0) + 1; });
     return counts;
-  }, []);
+  }, [ats]);
 
-  const total    = AT_DEMO.length;
+  const total    = ats.length || 1;
   const R        = 74;
   const CX = 92, CY = 92;
   const SW       = 26;
@@ -88,7 +92,7 @@ function RepartitionStatuts() {
               );
             })}
             <text x={CX} y={CY - 8} textAnchor="middle" fontSize="30" fontWeight="700" className="fill-[color:var(--text-primary)]">
-              {total}
+              {ats.length}
             </text>
             <text x={CX} y={CY + 14} textAnchor="middle" fontSize="11" letterSpacing="0.5" className="fill-[color:var(--text-muted)]">
               AT TOTAL
@@ -120,7 +124,7 @@ function RepartitionStatuts() {
         <div className="mt-4 pt-3 border-t border-[var(--border-faint)] flex items-center gap-2 text-xs text-[color:var(--text-secondary)]">
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: dominant.dot }} />
           Statut le plus fréquent : <span className="font-semibold text-[color:var(--text-primary)]">{dominant.label}</span>
-          <span className="text-[color:var(--text-muted)]">({dominant.count}/{total} AT)</span>
+          <span className="text-[color:var(--text-muted)]">({dominant.count}/{ats.length} AT)</span>
         </div>
       )}
     </div>
@@ -129,11 +133,11 @@ function RepartitionStatuts() {
 
 // ── AT actives vs Audits réalisés ─────────────────────────────────────────────
 
-function ActivesVsAuditees() {
+function ActivesVsAuditees({ ats }: { ats: ATView[] }) {
   const data = useMemo(() => {
     const map = new Map<string, { actives: number; audits: number }>();
 
-    AT_DEMO.filter(a => a.statut === 'ACTIVE').forEach(at => {
+    ats.filter(a => a.statut === StatutAT.ACTIVE).forEach(at => {
       const jour = at.date_debut_prevue.slice(0, 10);
       const entry = map.get(jour) ?? { actives: 0, audits: 0 };
       entry.actives += 1;
@@ -153,7 +157,7 @@ function ActivesVsAuditees() {
         try { label = format(new Date(jour), 'dd MMM', { locale: fr }); } catch { /* garde la valeur brute */ }
         return { label, ...v };
       });
-  }, []);
+  }, [ats]);
 
   const max = Math.max(...data.map(d => Math.max(d.actives, d.audits)), 1);
   const barZone = 76;
@@ -200,11 +204,11 @@ function ActivesVsAuditees() {
 
 // ── Alertes urgentes ──────────────────────────────────────────────────────────
 
-function AlertesUrgentes() {
+function AlertesUrgentes({ ats }: { ats: ATView[] }) {
   const alertes = useMemo(() => {
-    const suspendues = AT_DEMO.filter(a => a.statut === 'SUSPENDUE');
-    const critiques  = AT_DEMO.filter(a => a.niveau_risque === 'CRITIQUE' && a.statut === 'ACTIVE');
-    const aValider   = AT_DEMO.filter(a => a.statut === 'SOUMISE');
+    const suspendues = ats.filter(a => a.statut === StatutAT.SUSPENDUE);
+    const critiques  = ats.filter(a => a.niveau_risque === 'CRITIQUE' && a.statut === StatutAT.ACTIVE);
+    const aValider   = ats.filter(a => a.statut === StatutAT.SOUMISE);
 
     return [
       ...suspendues.map(at => ({
@@ -226,7 +230,7 @@ function AlertesUrgentes() {
         sub: at.entreprise_intervenante,
       })),
     ].slice(0, 5);
-  }, []);
+  }, [ats]);
 
   if (alertes.length === 0) {
     return (
@@ -315,10 +319,10 @@ function ListeATModal({
   title, ats, onClose,
 }: {
   title: string;
-  ats:   ATDemo[];
+  ats:   ATView[];
   onClose: () => void;
 }) {
-  const [selected, setSelected] = useState<ATDemo | null>(null);
+  const [selected, setSelected] = useState<ATView | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(modalRef, onClose);
 
@@ -418,10 +422,10 @@ function MiniBarChart({
 
 // ── Courbes d'évolution ────────────────────────────────────────────────────────
 
-function EvolutionAT() {
+function EvolutionAT({ ats }: { ats: ATView[] }) {
   const data = useMemo(() => {
     const map = new Map<string, number>();
-    AT_DEMO.forEach(at => {
+    ats.forEach(at => {
       const jour = at.date_debut_prevue.slice(0, 10);
       map.set(jour, (map.get(jour) ?? 0) + 1);
     });
@@ -432,7 +436,7 @@ function EvolutionAT() {
         try { label = format(new Date(jour), 'dd MMM', { locale: fr }); } catch { /* garde la valeur brute */ }
         return { label, value: count };
       });
-  }, []);
+  }, [ats]);
 
   return (
     <div className="card p-5">
@@ -445,10 +449,10 @@ function EvolutionAT() {
   );
 }
 
-function EvolutionIntervenants() {
+function EvolutionIntervenants({ ats }: { ats: ATView[] }) {
   const data = useMemo(() => {
     const map = new Map<string, number>();
-    AT_DEMO.forEach(at => {
+    ats.forEach(at => {
       const jour  = at.date_debut_prevue.slice(0, 10);
       const nb    = at.permis.flatMap(p => p.intervenants).length;
       map.set(jour, (map.get(jour) ?? 0) + nb);
@@ -460,7 +464,7 @@ function EvolutionIntervenants() {
         try { label = format(new Date(jour), 'dd MMM', { locale: fr }); } catch { /* garde la valeur brute */ }
         return { label, value: count };
       });
-  }, []);
+  }, [ats]);
 
   return (
     <div className="card p-5">
@@ -502,16 +506,16 @@ function EcartsAudit() {
 
 // ── Vue générale ──────────────────────────────────────────────────────────────
 
-function VueGenerale() {
-  const [listeFiltre, setListeFiltre] = useState<{ title: string; ats: ATDemo[] } | null>(null);
+function VueGenerale({ ats, loading, error }: { ats: ATView[]; loading: boolean; error: string | null }) {
+  const [listeFiltre, setListeFiltre] = useState<{ title: string; ats: ATView[] } | null>(null);
 
   const listes = useMemo(() => ({
-    total:        AT_DEMO,
-    actives:      AT_DEMO.filter(a => a.statut === 'ACTIVE'),
-    aValider:     AT_DEMO.filter(a => ['SOUMISE', 'VALIDEE'].includes(a.statut)),
-    suspendues:   AT_DEMO.filter(a => a.statut === 'SUSPENDUE'),
-    critiques:    AT_DEMO.filter(a => a.niveau_risque === 'CRITIQUE'),
-  }), []);
+    total:        ats,
+    actives:      ats.filter(a => a.statut === StatutAT.ACTIVE),
+    aValider:     ats.filter(a => [StatutAT.SOUMISE, StatutAT.VALIDEE].includes(a.statut)),
+    suspendues:   ats.filter(a => a.statut === StatutAT.SUSPENDUE),
+    critiques:    ats.filter(a => a.niveau_risque === 'CRITIQUE'),
+  }), [ats]);
 
   const kpis = useMemo(() => ({
     total:        listes.total.length,
@@ -519,8 +523,30 @@ function VueGenerale() {
     aValider:     listes.aValider.length,
     suspendues:   listes.suspendues.length,
     critiques:    listes.critiques.length,
-    intervenants: AT_DEMO.flatMap(a => a.permis.flatMap(p => p.intervenants)).length,
-  }), [listes]);
+    intervenants: ats.flatMap(a => a.permis.flatMap(p => p.intervenants)).length,
+  }), [listes, ats]);
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-danger-200 bg-danger-50 text-sm text-[color:var(--badge-danger-text)]">
+        <AlertTriangle size={15} className="flex-shrink-0" />
+        {error}
+      </div>
+    );
+  }
+
+  if (!loading && ats.length === 0) {
+    return (
+      <div className="card">
+        <EmptyState
+          icon={ShieldCheck}
+          title="Aucune autorisation de travail"
+          description="Aucune AT n'a encore été créée sur ce site."
+          size="lg"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -529,56 +555,55 @@ function VueGenerale() {
       <KpiGrid cols={3}>
         <KpiCard
           icon={ShieldCheck} label="AT totales"        color="navy"
-          value={kpis.total} sub="sur le site"
+          value={kpis.total} sub="sur le site" loading={loading}
           onClick={() => setListeFiltre({ title: 'Toutes les AT', ats: listes.total })}
         />
         <KpiCard
           icon={Activity}    label="AT actives"        color="success"
-          value={kpis.actives} sub="travaux en cours"
-          trend={+2} trendLabel="vs semaine préc."
+          value={kpis.actives} sub="travaux en cours" loading={loading}
           onClick={() => setListeFiltre({ title: 'AT actives', ats: listes.actives })}
         />
         <KpiCard
           icon={Clock}       label="En attente"        color="amber"
-          value={kpis.aValider} sub="validation requise"
+          value={kpis.aValider} sub="validation requise" loading={loading}
           onClick={() => setListeFiltre({ title: 'AT en attente de validation', ats: listes.aValider })}
         />
         <KpiCard
           icon={PauseCircle} label="Suspensions"       color="safety"
-          value={kpis.suspendues} sub="AT arrêtées"
+          value={kpis.suspendues} sub="AT arrêtées" loading={loading}
           onClick={() => setListeFiltre({ title: 'AT suspendues', ats: listes.suspendues })}
         />
         <KpiCard
           icon={AlertTriangle} label="Risques critiques" color="danger"
-          value={kpis.critiques} sub="niveau critique"
+          value={kpis.critiques} sub="niveau critique" loading={loading}
           onClick={() => setListeFiltre({ title: 'AT à risque critique', ats: listes.critiques })}
         />
         <KpiCard
           icon={Users}       label="Intervenants"      color="neutral"
-          value={kpis.intervenants} sub="toutes AT confondues"
+          value={kpis.intervenants} sub="toutes AT confondues" loading={loading}
           onClick={() => setListeFiltre({ title: 'AT avec intervenants recensés', ats: listes.total })}
         />
       </KpiGrid>
 
       {/* Courbes d'évolution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <EvolutionAT />
+        <EvolutionAT ats={ats} />
         <EcartsAudit />
-        <EvolutionIntervenants />
+        <EvolutionIntervenants ats={ats} />
       </div>
 
       {/* Alertes */}
-      <AlertesUrgentes />
+      <AlertesUrgentes ats={ats} />
 
       {/* Répartition + AT actives vs Audits */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <RepartitionStatuts />
-        <ActivesVsAuditees />
+        <RepartitionStatuts ats={ats} />
+        <ActivesVsAuditees ats={ats} />
       </div>
 
-      {/* Suivi des autorisations — Kanban */}
+      {/* Suivi des autorisations — Kanban (lecture seule) */}
       <p className="section-title">Suivi des autorisations</p>
-      <KanbanView ats={AT_DEMO} role="OBSERVATEUR" onTransition={() => { /* lecture seule */ }} />
+      <KanbanView ats={ats} role="OBSERVATEUR" />
 
       {listeFiltre && (
         <ListeATModal
@@ -597,8 +622,11 @@ export function DashboardAT() {
   const [onglet, setOnglet] = useState<OngletPrincipal>('generale');
   const navigate = useNavigate();
 
-  const countAnimateur = useMemo(() => AT_DEMO.filter(a => a.statut === 'SOUMISE').length, []);
-  const countRespZone  = useMemo(() => AT_DEMO.filter(a => a.statut === 'VALIDEE').length, []);
+  const { ats, loading, error, refetch } = useATDashboardData();
+  const actions = usePTWActions(refetch);
+
+  const countAnimateur = useMemo(() => ats.filter(a => a.statut === StatutAT.SOUMISE).length, [ats]);
+  const countRespZone  = useMemo(() => ats.filter(a => a.statut === StatutAT.VALIDEE).length, [ats]);
 
   return (
     <div className="min-h-screen">
@@ -619,17 +647,17 @@ export function DashboardAT() {
 
       <main className="max-w-6xl mx-auto px-6 py-6">
 
-        {onglet === 'generale' && <VueGenerale />}
+        {onglet === 'generale' && <VueGenerale ats={ats} loading={loading} error={error} />}
 
         {onglet === 'animateur' && (
           <div className="-mx-6">
-            <DashboardAnimateur embedded />
+            <DashboardAnimateur embedded ats={ats} loading={loading} error={error} actions={actions} />
           </div>
         )}
 
         {onglet === 'resp_zone' && (
           <div className="-mx-6">
-            <DashboardRespZone embedded />
+            <DashboardRespZone embedded ats={ats} loading={loading} error={error} actions={actions} />
           </div>
         )}
 

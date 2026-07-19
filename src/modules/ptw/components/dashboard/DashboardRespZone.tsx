@@ -5,8 +5,8 @@ import {
   ThumbsUp, LayoutList, LayoutDashboard,
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { AT_DEMO, ATDemo } from './demo.data';
-import type { StatutATDemo } from './demo.data';
+import type { ATView } from '../../types/dashboardView';
+import { StatutAT } from '../../types';
 import { ATApprovalCard } from './ATApprovalCard';
 import { ATActiveCard } from './ATActiveCard';
 import { ATSuspenduCard } from './ATSuspenduCard';
@@ -14,6 +14,8 @@ import { BadgeStatutAT, BadgeRisque } from './DashboardAnimateur';
 import { KanbanView } from './KanbanView';
 import { KpiCard, KpiGrid } from '@/components/ui/KpiCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useAuth } from '@/contexts/AuthContext';
+import type { PTWActions } from '../../hooks/usePTWActions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,71 +55,57 @@ function VueToggle({ vue, onChange }: { vue: Vue; onChange: (v: Vue) => void }) 
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function DashboardRespZone({ embedded = false }: { embedded?: boolean }) {
+interface Props {
+  embedded?: boolean;
+  ats: ATView[];
+  loading: boolean;
+  error: string | null;
+  actions: PTWActions;
+}
+
+export function DashboardRespZone({ embedded = false, ats, loading, error, actions }: Props) {
+  const { profile } = useAuth();
   const [onglet,    setOnglet]    = useState<Onglet>('approuver');
   const [vue,       setVue]       = useState<Vue>('liste');
   const [recherche, setRecherche] = useState('');
 
-  // État local des AT (permet de simuler approbations/refus)
-  const [atData, setAtData] = useState<ATDemo[]>(AT_DEMO);
-
   // KPIs
   const kpis = useMemo(() => ({
-    aApprouver:   atData.filter(a => a.statut === 'VALIDEE').length,
-    actives:      atData.filter(a => a.statut === 'ACTIVE').length,
-    suspendues:   atData.filter(a => a.statut === 'SUSPENDUE').length,
-    approuvees:   atData.filter(a => a.statut === 'APPROUVEE').length,
-  }), [atData]);
+    aApprouver:   ats.filter(a => a.statut === StatutAT.VALIDEE).length,
+    actives:      ats.filter(a => a.statut === StatutAT.ACTIVE).length,
+    suspendues:   ats.filter(a => a.statut === StatutAT.SUSPENDUE).length,
+    approuvees:   ats.filter(a => a.statut === StatutAT.APPROUVEE).length,
+  }), [ats]);
 
   // Filtrage recherche
   const atFiltrees = useMemo(() => {
     const q = recherche.toLowerCase();
-    return atData.filter(at =>
+    return ats.filter(at =>
       !q ||
       at.numero_at.toLowerCase().includes(q) ||
       at.titre.toLowerCase().includes(q) ||
       at.entreprise_intervenante.toLowerCase().includes(q) ||
       at.zone.toLowerCase().includes(q),
     );
-  }, [recherche, atData]);
+  }, [recherche, ats]);
 
   // Filtrage onglet
   const atAffichees = useMemo(() => {
     if (vue === 'kanban') return atFiltrees; // kanban = tout afficher dans les colonnes
     switch (onglet) {
-      case 'approuver':  return atFiltrees.filter(a => a.statut === 'VALIDEE');
-      case 'actives':    return atFiltrees.filter(a => a.statut === 'ACTIVE');
-      case 'suspendues': return atFiltrees.filter(a => a.statut === 'SUSPENDUE');
+      case 'approuver':  return atFiltrees.filter(a => a.statut === StatutAT.VALIDEE);
+      case 'actives':    return atFiltrees.filter(a => a.statut === StatutAT.ACTIVE);
+      case 'suspendues': return atFiltrees.filter(a => a.statut === StatutAT.SUSPENDUE);
       case 'toutes':     return atFiltrees;
     }
   }, [onglet, vue, atFiltrees]);
 
   const onglets: { id: Onglet; label: string; count: number; color?: string }[] = [
-    { id: 'approuver',  label: 'À approuver', count: atData.filter(a => a.statut === 'VALIDEE').length,   color: 'teal' },
-    { id: 'actives',    label: 'Actives',      count: atData.filter(a => a.statut === 'ACTIVE').length,    color: 'green' },
-    { id: 'suspendues', label: 'Suspendues',   count: atData.filter(a => a.statut === 'SUSPENDUE').length, color: 'orange' },
-    { id: 'toutes',     label: 'Toutes',       count: atData.length },
+    { id: 'approuver',  label: 'À approuver', count: ats.filter(a => a.statut === StatutAT.VALIDEE).length,   color: 'teal' },
+    { id: 'actives',    label: 'Actives',      count: ats.filter(a => a.statut === StatutAT.ACTIVE).length,    color: 'green' },
+    { id: 'suspendues', label: 'Suspendues',   count: ats.filter(a => a.statut === StatutAT.SUSPENDUE).length, color: 'orange' },
+    { id: 'toutes',     label: 'Toutes',       count: ats.length },
   ];
-
-  // Handler kanban
-  function handleKanbanTransition(atId: string, newStatut: StatutATDemo) {
-    setAtData(prev => prev.map(at => at.id === atId ? { ...at, statut: newStatut } : at));
-  }
-
-  // Handlers
-  function handleApprouver(atId: string, commentaire: string) {
-    console.log('AT approuvée :', atId, commentaire);
-    setAtData(prev => prev.map(at =>
-      at.id === atId ? { ...at, statut: 'APPROUVEE' as const } : at,
-    ));
-  }
-
-  function handleRefuser(atId: string, motif: string) {
-    console.log('AT refusée :', atId, motif);
-    setAtData(prev => prev.map(at =>
-      at.id === atId ? { ...at, statut: 'SOUMISE' as const } : at,
-    ));
-  }
 
   return (
     <div className={embedded ? '' : 'min-h-screen'}>
@@ -137,7 +125,7 @@ export function DashboardRespZone({ embedded = false }: { embedded?: boolean }) 
             </div>
             <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-1.5">
               <User size={14} className="text-white/70" />
-              <span className="text-white text-sm font-medium">Karim Benali</span>
+              <span className="text-white text-sm font-medium">{profile ? `${profile.prenom} ${profile.nom}` : ''}</span>
               <span className="bg-white/15 text-white text-xs px-2 py-0.5 rounded-full font-medium">
                 Resp. Zone
               </span>
@@ -152,12 +140,20 @@ export function DashboardRespZone({ embedded = false }: { embedded?: boolean }) 
         vue === 'kanban' ? 'max-w-full' : 'max-w-5xl',
       )}>
 
+        {/* ── Erreur de chargement ── */}
+        {error && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-danger-200 bg-danger-50 text-sm text-[color:var(--badge-danger-text)]">
+            <AlertTriangle size={15} className="flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
         {/* ── KPIs ── */}
         <KpiGrid cols={4}>
-          <KpiCard icon={ClipboardCheck} label="AT à approuver"  color="navy"    value={kpis.aApprouver} sub="décision requise"        />
-          <KpiCard icon={ThumbsUp}       label="AT approuvées"   color="neutral" value={kpis.approuvees} sub="en attente d'activation"  />
-          <KpiCard icon={Activity}       label="AT actives"      color="success" value={kpis.actives}    sub="en cours de travaux"       />
-          <KpiCard icon={AlertTriangle}  label="Suspensions"     color="safety"  value={kpis.suspendues} sub="AT arrêtées"               />
+          <KpiCard icon={ClipboardCheck} label="AT à approuver"  color="navy"    value={kpis.aApprouver} sub="décision requise"        loading={loading} />
+          <KpiCard icon={ThumbsUp}       label="AT approuvées"   color="neutral" value={kpis.approuvees} sub="en attente d'activation"  loading={loading} />
+          <KpiCard icon={Activity}       label="AT actives"      color="success" value={kpis.actives}    sub="en cours de travaux"       loading={loading} />
+          <KpiCard icon={AlertTriangle}  label="Suspensions"     color="safety"  value={kpis.suspendues} sub="AT arrêtées"               loading={loading} />
         </KpiGrid>
 
         {/* ── Règle métier rappel ── */}
@@ -222,7 +218,7 @@ export function DashboardRespZone({ embedded = false }: { embedded?: boolean }) 
           <KanbanView
             ats={atAffichees}
             role="RESP_ZONE"
-            onTransition={handleKanbanTransition}
+            actions={actions}
           />
         ) : (
           <div className="space-y-3">
@@ -238,19 +234,19 @@ export function DashboardRespZone({ embedded = false }: { embedded?: boolean }) 
               </div>
             ) : (
               atAffichees.map(at => {
-                if (at.statut === 'VALIDEE') return (
-                  <ATApprovalCard key={at.id} at={at} onApprouver={handleApprouver} onRefuser={handleRefuser} />
+                if (at.statut === StatutAT.VALIDEE) return (
+                  <ATApprovalCard key={at.id} at={at} actions={actions} />
                 );
-                if (at.statut === 'ACTIVE')    return <ATActiveCard   key={at.id} at={at} />;
-                if (at.statut === 'SUSPENDUE') return <ATSuspenduCard key={at.id} at={at} />;
+                if (at.statut === StatutAT.ACTIVE)    return <ATActiveCard   key={at.id} at={at} actions={actions} />;
+                if (at.statut === StatutAT.SUSPENDUE) return <ATSuspenduCard key={at.id} at={at} actions={actions} />;
                 return (
                   <div key={at.id} className={clsx(
                     'card p-4 flex items-center gap-4',
-                    at.statut === 'APPROUVEE' ? 'border-purple-500/30' : '',
+                    at.statut === StatutAT.APPROUVEE ? 'border-purple-500/30' : '',
                   )}>
-                    {at.statut === 'APPROUVEE' ? (
+                    {at.statut === StatutAT.APPROUVEE ? (
                       <CheckCircle2 size={16} className="text-purple-500 flex-shrink-0" />
-                    ) : at.statut === 'SOUMISE' ? (
+                    ) : at.statut === StatutAT.SOUMISE ? (
                       <XCircle size={16} className="text-red-400 flex-shrink-0" />
                     ) : (
                       <ClipboardCheck size={16} className="text-[color:var(--text-secondary)] flex-shrink-0" />
@@ -258,10 +254,10 @@ export function DashboardRespZone({ embedded = false }: { embedded?: boolean }) 
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[color:var(--text-primary)] truncate text-sm">{at.titre}</p>
                       <p className="text-xs text-[color:var(--text-muted)] mt-0.5">{at.numero_at} · {at.entreprise_intervenante}</p>
-                      {at.statut === 'APPROUVEE' && (
+                      {at.statut === StatutAT.APPROUVEE && (
                         <p className="text-xs text-purple-600 mt-0.5 font-medium">Approuvée — en attente d'activation terrain</p>
                       )}
-                      {at.statut === 'SOUMISE' && (
+                      {at.statut === StatutAT.SOUMISE && (
                         <p className="text-xs text-red-500 mt-0.5 font-medium">Renvoyée en correction — re-soumission Animateur requise</p>
                       )}
                     </div>

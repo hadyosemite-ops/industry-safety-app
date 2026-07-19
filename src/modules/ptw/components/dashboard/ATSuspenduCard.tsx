@@ -5,10 +5,11 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ATDemo } from './demo.data';
+import type { ATView } from '../../types/dashboardView';
 import { BadgeRisque } from './DashboardAnimateur';
 import { PermisChip } from './DashboardAnimateur';
 import { AuditModal, AuditFormData } from './AuditModal';
+import type { PTWActions } from '../../hooks/usePTWActions';
 
 // ── Libellés types écart ──────────────────────────────────────────────────────
 
@@ -19,46 +20,38 @@ const LABELS_ECART: Record<string, string> = {
   DEFAUT_ISOLATION:         '🔒 Défaut de consignation',
   ECART_PROCEDURE:          '📋 Non-respect de procédure',
   RISQUE_TIERS:             '👥 Risque pour tiers',
+  CONDITION_METEO:          '🌦️ Condition météo',
   AUTRE:                    '📌 Autre',
 };
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  at: ATDemo;
+  at: ATView;
+  actions: PTWActions;
 }
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 
-export function ATSuspenduCard({ at }: Props) {
+export function ATSuspenduCard({ at, actions }: Props) {
   const [detailsOuverts, setDetailsOuverts] = useState(false);
   const [auditModalOuvert, setAuditModalOuvert] = useState(false);
-  const [leveeSimulee, setLeveeSimulee] = useState(false);
 
-  const suspension = at.suspensions[0]; // suspension ouverte
+  // suspension ouverte (non levée)
+  const suspension = at.suspensions.find(s => !s.date_levee) ?? at.suspensions[0];
 
-  const dateSuspension = (() => {
+  const dateSuspension = suspension ? (() => {
     try { return format(new Date(suspension.date_suspension), "dd MMM yyyy 'à' HH:mm", { locale: fr }); }
     catch { return suspension.date_suspension; }
-  })();
+  })() : '—';
 
-  function handleAuditLevee(data: AuditFormData) {
-    console.log('Audit levée suspension :', at.numero_at, data);
-    setAuditModalOuvert(false);
-    setLeveeSimulee(true);
+  async function handleAuditLevee(data: AuditFormData) {
+    if (!suspension) return;
+    const ok = await actions.leverSuspensionAvecAudit(at.id, suspension.id, data);
+    if (ok) setAuditModalOuvert(false);
   }
 
-  if (leveeSimulee) {
-    return (
-      <div className="bg-success-50 border border-success-200 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
-        <CheckCircle2 size={20} className="text-success-500 flex-shrink-0" />
-        <div className="flex-1">
-          <p className="font-semibold text-[color:var(--badge-success-text)]">{at.titre}</p>
-          <p className="text-xs text-success-400 mt-0.5">{at.numero_at} · Suspension levée — AT en cours de reprise</p>
-        </div>
-      </div>
-    );
-  }
+  if (!suspension) return null;
 
   return (
     <>

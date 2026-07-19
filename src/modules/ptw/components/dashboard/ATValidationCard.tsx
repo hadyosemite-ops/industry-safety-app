@@ -6,27 +6,30 @@ import {
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ATDemo, PermisDemo } from './demo.data';
+import type { ATView, PermisView } from '../../types/dashboardView';
+import { StatutPermis } from '../../types';
 import { BadgeRisque } from './DashboardAnimateur';
 import { PermisChip } from './DashboardAnimateur';
 import { PermisValidationModal } from './PermisValidationModal';
+import type { PTWActions } from '../../hooks/usePTWActions';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  at: ATDemo;
+  at: ATView;
+  actions: PTWActions;
 }
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 
-export function ATValidationCard({ at }: Props) {
-  const [permisModalOuvert, setPermisModalOuvert] = useState<PermisDemo | null>(null);
-  const [permisData, setPermisData] = useState<PermisDemo[]>(at.permis);
+export function ATValidationCard({ at, actions }: Props) {
+  const [permisModalOuvert, setPermisModalOuvert] = useState<PermisView | null>(null);
 
+  const permisData    = at.permis;
   const totalPermis   = permisData.length;
-  const validesCount  = permisData.filter(p => p.statut === 'VALIDE').length;
-  const enAttenteCount = permisData.filter(p => p.statut === 'EN_ATTENTE').length;
-  const rejeteCount   = permisData.filter(p => p.statut === 'REJETE').length;
+  const validesCount  = permisData.filter(p => p.statut === StatutPermis.VALIDE).length;
+  const enAttenteCount = permisData.filter(p => p.statut === StatutPermis.EN_ATTENTE).length;
+  const rejeteCount   = permisData.filter(p => p.statut === StatutPermis.REJETE).length;
   const progress      = totalPermis > 0 ? (validesCount / totalPermis) * 100 : 0;
 
   const dateDebut = (() => {
@@ -34,24 +37,16 @@ export function ATValidationCard({ at }: Props) {
     catch { return at.date_debut_prevue; }
   })();
 
-  function handleValider(commentaire: string, checklist_reponses: PermisDemo['checklist_reponses']) {
+  async function handleValider(commentaire: string, checklist_reponses: PermisView['checklist_reponses']) {
     if (!permisModalOuvert) return;
-    setPermisData(prev => prev.map(p =>
-      p.id === permisModalOuvert.id
-        ? { ...p, statut: 'VALIDE' as const, checklist_reponses, valide_par: 'Sophie Martin', valide_le: new Date().toISOString(), commentaire_validation: commentaire || undefined }
-        : p,
-    ));
-    setPermisModalOuvert(null);
+    const ok = await actions.validerPermis(permisModalOuvert.id, commentaire, checklist_reponses);
+    if (ok) setPermisModalOuvert(null);
   }
 
-  function handleRejeter(motif: string) {
+  async function handleRejeter(motif: string) {
     if (!permisModalOuvert) return;
-    setPermisData(prev => prev.map(p =>
-      p.id === permisModalOuvert.id
-        ? { ...p, statut: 'REJETE' as const, rejete_le: new Date().toISOString(), motif_rejet: motif }
-        : p,
-    ));
-    setPermisModalOuvert(null);
+    const ok = await actions.rejeterPermis(permisModalOuvert.id, motif);
+    if (ok) setPermisModalOuvert(null);
   }
 
   const allValidated = validesCount === totalPermis && totalPermis > 0;

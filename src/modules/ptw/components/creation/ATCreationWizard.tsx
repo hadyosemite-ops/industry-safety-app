@@ -5,9 +5,13 @@ import { StepInformationsGenerales } from './StepInformationsGenerales';
 import { StepPermis } from './StepPermis';
 import { StepRevue } from './StepRevue';
 import {
-  TypePermis, NiveauRisque,
-  type CreateATPayload, type EvaluationRisques,
+  TypePermis, NiveauRisque, RoleUtilisateur,
+  type CreateATPayload, type CreatePermisPayload, type EvaluationRisques,
 } from '../../types';
+import * as atService from '../../services/atService';
+import * as permisService from '../../services/permisService';
+import { useAuth } from '@/contexts/AuthContext';
+import { pickRole, toRoleUtilisateurs } from '../../utils/roles';
 
 // ─── Types du wizard ──────────────────────────────────────────────────────────
 
@@ -140,6 +144,7 @@ function validerEtape2(data: WizardFormData): Record<string, string> {
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 export function ATCreationWizard() {
+  const { user, profile } = useAuth();
   const [state, dispatch] = useReducer(reducer, {
     etape: 1,
     formData: FORM_INITIAL,
@@ -176,11 +181,22 @@ export function ATCreationWizard() {
       return;
     }
 
+    if (!user?.id || !profile?.site_id) {
+      dispatch({ type: 'SET_ERREURS', payload: { global: 'Session utilisateur invalide — reconnectez-vous.' } });
+      return;
+    }
+
+    const roles = toRoleUtilisateurs(profile.roles);
+    const role = pickRole(roles, [RoleUtilisateur.DEMANDEUR, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.ADMIN]);
+    if (!role) {
+      dispatch({ type: 'SET_ERREURS', payload: { global: "Vous n'avez pas le rôle requis pour créer une Autorisation de Travail." } });
+      return;
+    }
+
     dispatch({ type: 'SET_EN_COURS', payload: true });
     try {
-      // TODO: Remplacer par l'appel réel au service avec l'acteur connecté
       const payload: CreateATPayload = {
-        site_id:                  formData.site_id || 'demo-site-id',
+        site_id:                  profile.site_id,
         zone_id:                  formData.zone_id,
         titre:                    formData.titre,
         description_travaux:      formData.description_travaux,
@@ -192,12 +208,41 @@ export function ATCreationWizard() {
         evaluation_risques:       formData.evaluation_risques,
         animateur_id:             formData.animateur_id || undefined,
       };
-      console.log('Payload AT:', payload);
-      console.log('Permis:', formData.permis);
 
-      // Simulation (à remplacer par creerAT + creerPermis)
-      await new Promise(r => setTimeout(r, 1200));
-      dispatch({ type: 'SET_SOUMIS', payload: { id: 'demo-id', numero_at: 'AT-2026-DEMO-0001' } });
+      const { data: at, error: atError } = await atService.creerAT(payload, user.id);
+      if (atError || !at) {
+        dispatch({ type: 'SET_ERREURS', payload: { global: atError?.message ?? "Erreur lors de la création de l'AT." } });
+        return;
+      }
+
+      for (const p of formData.permis) {
+        const permisPayload: CreatePermisPayload = {
+          at_id: at.id,
+          type_permis: p.type_permis,
+          checklist_reponses: p.checklist_reponses,
+          mesures_prevention: p.mesures_prevention,
+          epi_requis: p.epi_requis,
+          equipements_concernes: p.equipements_concernes,
+          intervenants: p.intervenants.map(i => ({
+            nom_complet: i.nom_complet,
+            entreprise: i.entreprise,
+            habilitations: i.habilitations,
+          })),
+        };
+        const { error: permisError } = await permisService.creerPermis(permisPayload, user.id, role);
+        if (permisError) {
+          dispatch({ type: 'SET_ERREURS', payload: { global: `AT créée (${at.numero_at}) mais erreur sur un permis : ${permisError.message}` } });
+          return;
+        }
+      }
+
+      const { error: soumettreError } = await atService.soumettre(at.id, user.id, role);
+      if (soumettreError) {
+        dispatch({ type: 'SET_ERREURS', payload: { global: `AT et permis créés (${at.numero_at}) mais la soumission a échoué : ${soumettreError.message}` } });
+        return;
+      }
+
+      dispatch({ type: 'SET_SOUMIS', payload: { id: at.id, numero_at: at.numero_at } });
     } catch (err) {
       dispatch({ type: 'SET_ERREURS', payload: { global: 'Erreur lors de la soumission. Réessayez.' } });
     } finally {

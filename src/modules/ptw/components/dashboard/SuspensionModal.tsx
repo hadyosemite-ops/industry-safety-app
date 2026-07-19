@@ -1,39 +1,40 @@
 import { useRef, useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
-import { ATDemo, TypeEcartDemo } from './demo.data';
+import type { ATView } from '../../types/dashboardView';
+import { TypeEcart } from '../../types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  at: ATDemo;
+  at: ATView;
   onClose: () => void;
   onConfirmer: (data: SuspensionFormData) => void;
 }
 
 export interface SuspensionFormData {
-  type_ecart: TypeEcartDemo;
+  type_ecart: TypeEcart;
   description_ecart: string;
   mesures_correctives: string;
 }
 
 // ── Données référence ─────────────────────────────────────────────────────────
 
-const TYPES_ECART: { value: TypeEcartDemo; label: string; desc: string; icon: string }[] = [
-  { value: 'EPI_MANQUANT',             label: 'EPI manquant / non conforme', desc: 'EPI absents, endommagés ou périmés', icon: '🦺' },
-  { value: 'ZONE_NON_SECURISEE',       label: 'Zone non sécurisée',          desc: 'Balisage insuffisant ou absent',    icon: '⚠️' },
-  { value: 'INTERVENANT_NON_HABILITE', label: 'Intervenant non habilité',    desc: 'Personne sans habilitation requise', icon: '🚫' },
-  { value: 'DEFAUT_ISOLATION',         label: 'Défaut de consignation',      desc: 'LOTO ou isolation non conforme',    icon: '🔒' },
-  { value: 'ECART_PROCEDURE',          label: 'Non-respect procédure',       desc: 'Écart par rapport au permis signé', icon: '📋' },
-  { value: 'RISQUE_TIERS',             label: 'Risque pour tiers',           desc: 'Danger identifié pour d\'autres',  icon: '👥' },
-  { value: 'AUTRE',                    label: 'Autre',                       desc: 'Autre type d\'écart constaté',     icon: '📌' },
+const TYPES_ECART: { value: TypeEcart; label: string; desc: string; icon: string }[] = [
+  { value: TypeEcart.EPI_MANQUANT,             label: 'EPI manquant / non conforme', desc: 'EPI absents, endommagés ou périmés', icon: '🦺' },
+  { value: TypeEcart.ZONE_NON_SECURISEE,       label: 'Zone non sécurisée',          desc: 'Balisage insuffisant ou absent',    icon: '⚠️' },
+  { value: TypeEcart.INTERVENANT_NON_HABILITE, label: 'Intervenant non habilité',    desc: 'Personne sans habilitation requise', icon: '🚫' },
+  { value: TypeEcart.DEFAUT_ISOLATION,         label: 'Défaut de consignation',      desc: 'LOTO ou isolation non conforme',    icon: '🔒' },
+  { value: TypeEcart.ECART_PROCEDURE,          label: 'Non-respect procédure',       desc: 'Écart par rapport au permis signé', icon: '📋' },
+  { value: TypeEcart.RISQUE_TIERS,             label: 'Risque pour tiers',           desc: 'Danger identifié pour d\'autres',  icon: '👥' },
+  { value: TypeEcart.AUTRE,                    label: 'Autre',                       desc: 'Autre type d\'écart constaté',     icon: '📌' },
 ];
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 
 export function SuspensionModal({ at, onClose, onConfirmer }: Props) {
-  const [typeEcart, setTypeEcart] = useState<TypeEcartDemo>('EPI_MANQUANT');
+  const [typeEcart, setTypeEcart] = useState<TypeEcart>(TypeEcart.EPI_MANQUANT);
   const [description, setDescription] = useState('');
   const [mesures, setMesures] = useState('');
   const [erreurs, setErreurs] = useState<Record<string, string>>({});

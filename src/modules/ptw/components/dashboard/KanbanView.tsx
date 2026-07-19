@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { clsx } from 'clsx';
 import {
   CheckCircle2, XCircle, X, MapPin, Building2, Calendar,
@@ -6,27 +6,31 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { ATDemo, PermisDemo, StatutATDemo, ICONES_PERMIS, LABELS_PERMIS } from './demo.data';
+import type { ATView, PermisView } from '../../types/dashboardView';
+import { ICONES_PERMIS, LABELS_PERMIS } from '../../types/dashboardView';
+import { StatutAT, StatutPermis } from '../../types';
 import { KanbanCard } from './KanbanCard';
 import { SuspensionModal, SuspensionFormData } from './SuspensionModal';
 import { AuditModal, AuditFormData } from './AuditModal';
 import { PermisValidationModal } from './PermisValidationModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import type { PTWActions } from '../../hooks/usePTWActions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type RoleKanban = 'ANIMATEUR' | 'RESP_ZONE' | 'OBSERVATEUR';
 
 interface Props {
-  ats: ATDemo[];
+  ats: ATView[];
   role: RoleKanban;
-  onTransition: (atId: string, newStatut: StatutATDemo, data?: unknown) => void;
+  /** Actions métier réelles (Supabase). Non fournies en mode lecture seule (Vue générale). */
+  actions?: PTWActions;
 }
 
 // ── Définition des colonnes ───────────────────────────────────────────────────
 
 interface ColonneDef {
-  statut:    StatutATDemo;
+  statut:    StatutAT;
   label:     string;
   emoji:     string;
   headerCls: string;       // classe couleur header
@@ -36,7 +40,7 @@ interface ColonneDef {
 
 const COLONNES: ColonneDef[] = [
   {
-    statut:    'SOUMISE',
+    statut:    StatutAT.SOUMISE,
     label:     'Soumise',
     emoji:     '📋',
     headerCls: 'bg-navy-50 text-[color:var(--badge-navy-text)] border-navy-200',
@@ -44,7 +48,7 @@ const COLONNES: ColonneDef[] = [
     dropNoCls: 'ring-2 ring-danger-300 bg-danger-50/30',
   },
   {
-    statut:    'VALIDEE',
+    statut:    StatutAT.VALIDEE,
     label:     'Validée',
     emoji:     '✅',
     headerCls: 'bg-teal-500/10 text-[color:var(--badge-teal-text)] border-teal-500/30',
@@ -52,7 +56,7 @@ const COLONNES: ColonneDef[] = [
     dropNoCls: 'ring-2 ring-danger-300 bg-danger-50/30',
   },
   {
-    statut:    'APPROUVEE',
+    statut:    StatutAT.APPROUVEE,
     label:     'Approuvée',
     emoji:     '👍',
     headerCls: 'bg-violet-500/10 text-[color:var(--badge-purple-text)] border-violet-500/30',
@@ -60,7 +64,7 @@ const COLONNES: ColonneDef[] = [
     dropNoCls: 'ring-2 ring-danger-300 bg-danger-50/30',
   },
   {
-    statut:    'ACTIVE',
+    statut:    StatutAT.ACTIVE,
     label:     'Active',
     emoji:     '⚡',
     headerCls: 'bg-success-50 text-[color:var(--badge-success-text)] border-success-200',
@@ -68,7 +72,7 @@ const COLONNES: ColonneDef[] = [
     dropNoCls: 'ring-2 ring-danger-300 bg-danger-50/30',
   },
   {
-    statut:    'SUSPENDUE',
+    statut:    StatutAT.SUSPENDUE,
     label:     'Suspendue',
     emoji:     '⏸️',
     headerCls: 'bg-safety-50 text-[color:var(--badge-safety-text)] border-safety-200',
@@ -76,7 +80,7 @@ const COLONNES: ColonneDef[] = [
     dropNoCls: 'ring-2 ring-danger-300 bg-danger-50/30',
   },
   {
-    statut:    'CLOTUREE',
+    statut:    StatutAT.CLOTUREE,
     label:     'Clôturée',
     emoji:     '🔒',
     headerCls: 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]',
@@ -85,14 +89,13 @@ const COLONNES: ColonneDef[] = [
   },
 ];
 
-// ── Règles métier de transition ───────────────────────────────────────────────
+// ── Règles métier de transition (garde-fou UI — la vérité vient du service) ────
 
-// Retourne true si la transition from→to est autorisée pour ce rôle
 function estTransitionAutorisee(
-  from:    StatutATDemo,
-  to:      StatutATDemo,
+  from:    StatutAT,
+  to:      StatutAT,
   role:    RoleKanban,
-  at:      ATDemo,
+  at:      ATView,
 ): { ok: boolean; motif?: string } {
   if (from === to) return { ok: false };
 
@@ -101,32 +104,24 @@ function estTransitionAutorisee(
   }
 
   if (role === 'ANIMATEUR') {
-    // Animateur : SOUMISE → VALIDEE (condition : 100% permis validés)
-    if (from === 'SOUMISE' && to === 'VALIDEE') {
-      const allValide = at.permis.every(p => p.statut === 'VALIDE');
+    if (from === StatutAT.SOUMISE && to === StatutAT.VALIDEE) {
+      const allValide = at.permis.every(p => p.statut === StatutPermis.VALIDE);
       if (!allValide) return { ok: false, motif: 'Tous les permis doivent être validés avant de passer en Validée.' };
       return { ok: true };
     }
-    // ACTIVE → SUSPENDUE
-    if (from === 'ACTIVE' && to === 'SUSPENDUE') return { ok: true };
-    // SUSPENDUE → ACTIVE (levée suspension)
-    if (from === 'SUSPENDUE' && to === 'ACTIVE') return { ok: true };
+    if (from === StatutAT.ACTIVE && to === StatutAT.SUSPENDUE) return { ok: true };
+    if (from === StatutAT.SUSPENDUE && to === StatutAT.ACTIVE) return { ok: true };
 
     return { ok: false, motif: 'Action non autorisée pour l\'Animateur de Sécurité.' };
   }
 
   if (role === 'RESP_ZONE') {
-    // VALIDEE → APPROUVEE
-    if (from === 'VALIDEE' && to === 'APPROUVEE') return { ok: true };
-    // VALIDEE → SOUMISE (refus → renvoie en correction)
-    if (from === 'VALIDEE' && to === 'SOUMISE') return { ok: true };
-    // APPROUVEE → ACTIVE
-    if (from === 'APPROUVEE' && to === 'ACTIVE') return { ok: true };
-    // ACTIVE → SUSPENDUE
-    if (from === 'ACTIVE' && to === 'SUSPENDUE') return { ok: true };
-    // ACTIVE → CLOTUREE (condition : tous permis CLOS)
-    if (from === 'ACTIVE' && to === 'CLOTUREE') {
-      const allClos = at.permis.every(p => p.statut === 'CLOS');
+    if (from === StatutAT.VALIDEE && to === StatutAT.APPROUVEE) return { ok: true };
+    if (from === StatutAT.VALIDEE && to === StatutAT.SOUMISE) return { ok: true };
+    if (from === StatutAT.APPROUVEE && to === StatutAT.ACTIVE) return { ok: true };
+    if (from === StatutAT.ACTIVE && to === StatutAT.SUSPENDUE) return { ok: true };
+    if (from === StatutAT.ACTIVE && to === StatutAT.CLOTUREE) {
+      const allClos = at.permis.every(p => p.statut === StatutPermis.CLOS);
       if (!allClos) return { ok: false, motif: 'Tous les permis doivent être clôturés avant de clôturer l\'AT.' };
       return { ok: true };
     }
@@ -137,12 +132,11 @@ function estTransitionAutorisee(
   return { ok: false };
 }
 
-// Transitions qui nécessitent une modal avant d'être confirmées
-function necessiteModal(from: StatutATDemo, to: StatutATDemo, role: RoleKanban): 'suspension' | 'audit' | 'approbation' | 'refus' | null {
-  if (to === 'SUSPENDUE') return 'suspension';
-  if (from === 'SUSPENDUE' && to === 'ACTIVE') return 'audit';
-  if (from === 'VALIDEE' && to === 'APPROUVEE' && role === 'RESP_ZONE') return 'approbation';
-  if (from === 'VALIDEE' && to === 'SOUMISE' && role === 'RESP_ZONE') return 'refus';
+function necessiteModal(from: StatutAT, to: StatutAT, role: RoleKanban): 'suspension' | 'audit' | 'approbation' | 'refus' | null {
+  if (to === StatutAT.SUSPENDUE) return 'suspension';
+  if (from === StatutAT.SUSPENDUE && to === StatutAT.ACTIVE) return 'audit';
+  if (from === StatutAT.VALIDEE && to === StatutAT.APPROUVEE && role === 'RESP_ZONE') return 'approbation';
+  if (from === StatutAT.VALIDEE && to === StatutAT.SOUMISE && role === 'RESP_ZONE') return 'refus';
   return null;
 }
 
@@ -171,28 +165,27 @@ function KanbanColonne({
   onCardClick,
 }: {
   col:         ColonneDef;
-  ats:         ATDemo[];
-  draggedAt:   ATDemo | null;
-  dropTarget:  StatutATDemo | null;
+  ats:         ATView[];
+  draggedAt:   ATView | null;
+  dropTarget:  StatutAT | null;
   dropValid:   boolean | null;
   role:        RoleKanban;
-  onDragStart: (at: ATDemo) => void;
+  onDragStart: (at: ATView) => void;
   onDragEnd:   () => void;
-  onDragOver:  (statut: StatutATDemo, at: ATDemo) => void;
+  onDragOver:  (statut: StatutAT, at: ATView) => void;
   onDragLeave: () => void;
-  onDrop:      (targetStatut: StatutATDemo) => void;
-  onCardClick: (at: ATDemo) => void;
+  onDrop:      (targetStatut: StatutAT) => void;
+  onCardClick: (at: ATView) => void;
 }) {
   const isTarget = dropTarget === col.statut;
 
-  // Peut-on drag les cartes de cette colonne pour ce rôle ?
-  const canDragFrom = useCallback((at: ATDemo): boolean => {
+  const canDragFrom = useCallback((at: ATView): boolean => {
     if (role === 'OBSERVATEUR') return false;
     if (role === 'ANIMATEUR') {
-      return at.statut === 'SOUMISE' || at.statut === 'ACTIVE' || at.statut === 'SUSPENDUE';
+      return at.statut === StatutAT.SOUMISE || at.statut === StatutAT.ACTIVE || at.statut === StatutAT.SUSPENDUE;
     }
     if (role === 'RESP_ZONE') {
-      return at.statut === 'VALIDEE' || at.statut === 'APPROUVEE' || at.statut === 'ACTIVE';
+      return at.statut === StatutAT.VALIDEE || at.statut === StatutAT.APPROUVEE || at.statut === StatutAT.ACTIVE;
     }
     return false;
   }, [role]);
@@ -266,7 +259,7 @@ function ConfirmModal({
   onCancel,
 }: {
   type: 'approbation' | 'refus' | 'activation';
-  at: ATDemo;
+  at: ATView;
   onConfirm: (comment: string) => void;
   onCancel: () => void;
 }) {
@@ -359,17 +352,14 @@ function ConfirmModal({
 
 // ── Modal détail AT ───────────────────────────────────────────────────────────
 
-// Badge affiché sur le bandeau bleu fixe (#0077aa) de la modale — ce bandeau
-// reste toujours sombre quel que soit le thème, donc le badge utilise un style
-// fixe (blanc translucide + pastille colorée) plutôt que des tokens de thème,
-// sans quoi le texte devient illisible en mode clair (cf. StepIndicator).
-const STATUT_STYLE: Record<StatutATDemo, { label: string; cls: string; dot: string }> = {
-  SOUMISE:   { label: 'Soumise',   cls: 'bg-white/15 text-white border-white/25', dot: 'bg-blue-300'   },
-  VALIDEE:   { label: 'Validée',   cls: 'bg-white/15 text-white border-white/25', dot: 'bg-teal-300'   },
-  APPROUVEE: { label: 'Approuvée', cls: 'bg-white/15 text-white border-white/25', dot: 'bg-violet-300' },
-  ACTIVE:    { label: 'Active',    cls: 'bg-white/15 text-white border-white/25', dot: 'bg-green-300'  },
-  SUSPENDUE: { label: 'Suspendue', cls: 'bg-white/15 text-white border-white/25', dot: 'bg-orange-300' },
-  CLOTUREE:  { label: 'Clôturée', cls: 'bg-white/15 text-white border-white/25', dot: 'bg-slate-300'   },
+const STATUT_STYLE: Record<StatutAT, { label: string; cls: string; dot: string }> = {
+  [StatutAT.BROUILLON]: { label: 'Brouillon', cls: 'bg-white/15 text-white border-white/25', dot: 'bg-slate-300' },
+  [StatutAT.SOUMISE]:   { label: 'Soumise',   cls: 'bg-white/15 text-white border-white/25', dot: 'bg-blue-300'   },
+  [StatutAT.VALIDEE]:   { label: 'Validée',   cls: 'bg-white/15 text-white border-white/25', dot: 'bg-teal-300'   },
+  [StatutAT.APPROUVEE]: { label: 'Approuvée', cls: 'bg-white/15 text-white border-white/25', dot: 'bg-violet-300' },
+  [StatutAT.ACTIVE]:    { label: 'Active',    cls: 'bg-white/15 text-white border-white/25', dot: 'bg-green-300'  },
+  [StatutAT.SUSPENDUE]: { label: 'Suspendue', cls: 'bg-white/15 text-white border-white/25', dot: 'bg-orange-300' },
+  [StatutAT.CLOTUREE]:  { label: 'Clôturée', cls: 'bg-white/15 text-white border-white/25', dot: 'bg-slate-300'   },
 };
 
 const RISQUE_STYLE: Record<string, { cls: string; icon: string }> = {
@@ -392,36 +382,33 @@ function fmtDate(iso: string) {
 }
 
 export function ATDetailModal({
-  at, onClose, role, onUpdatePermis,
+  at, onClose, role, actions,
 }: {
-  at: ATDemo;
+  at: ATView;
   onClose: () => void;
-  /** Si 'ANIMATEUR' et fourni avec onUpdatePermis, les permis en attente deviennent validables ici. */
+  /** Si 'ANIMATEUR' et `actions` fourni, les permis en attente deviennent validables ici. */
   role?: RoleKanban;
-  onUpdatePermis?: (permisId: string, patch: Partial<PermisDemo>) => void;
+  actions?: PTWActions;
 }) {
   const statut = STATUT_STYLE[at.statut];
   const risque = RISQUE_STYLE[at.niveau_risque] ?? RISQUE_STYLE.MODERE;
-  const validesCount = at.permis.filter(p => p.statut === 'VALIDE').length;
+  const validesCount = at.permis.filter(p => p.statut === StatutPermis.VALIDE).length;
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(modalRef, onClose);
 
-  const peutValider = role === 'ANIMATEUR' && !!onUpdatePermis;
-  const [permisModalOuvert, setPermisModalOuvert] = useState<PermisDemo | null>(null);
+  const peutValider = role === 'ANIMATEUR' && !!actions;
+  const [permisModalOuvert, setPermisModalOuvert] = useState<PermisView | null>(null);
 
-  function handleValider(commentaire: string, checklist_reponses: PermisDemo['checklist_reponses']) {
-    if (!permisModalOuvert || !onUpdatePermis) return;
-    onUpdatePermis(permisModalOuvert.id, {
-      statut: 'VALIDE', checklist_reponses, valide_par: 'Sophie Martin', valide_le: new Date().toISOString(),
-      commentaire_validation: commentaire || undefined,
-    });
-    setPermisModalOuvert(null);
+  async function handleValider(commentaire: string, checklist_reponses: PermisView['checklist_reponses']) {
+    if (!permisModalOuvert || !actions) return;
+    const ok = await actions.validerPermis(permisModalOuvert.id, commentaire, checklist_reponses);
+    if (ok) setPermisModalOuvert(null);
   }
 
-  function handleRejeter(motif: string) {
-    if (!permisModalOuvert || !onUpdatePermis) return;
-    onUpdatePermis(permisModalOuvert.id, { statut: 'REJETE', rejete_le: new Date().toISOString(), motif_rejet: motif });
-    setPermisModalOuvert(null);
+  async function handleRejeter(motif: string) {
+    if (!permisModalOuvert || !actions) return;
+    const ok = await actions.rejeterPermis(permisModalOuvert.id, motif);
+    if (ok) setPermisModalOuvert(null);
   }
 
   return (
@@ -547,7 +534,7 @@ export function ATDetailModal({
                 <div className="space-y-2">
                   {at.permis.map(permis => {
                     const ps = PERMIS_STATUT_STYLE[permis.statut] ?? PERMIS_STATUT_STYLE.EN_ATTENTE;
-                    const validable = peutValider && permis.statut === 'EN_ATTENTE';
+                    const validable = peutValider && permis.statut === StatutPermis.EN_ATTENTE;
                     const Wrapper: 'button' | 'div' = validable ? 'button' : 'div';
                     return (
                       <Wrapper
@@ -564,9 +551,9 @@ export function ATDetailModal({
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-[color:var(--text-primary)]">{LABELS_PERMIS[permis.type_permis]}</p>
-                          {permis.valide_par && (
+                          {permis.valide_le && (
                             <p className="text-xs text-[color:var(--text-muted)]">
-                              Validé par : {permis.valide_par}
+                              Validé le {fmtDate(permis.valide_le)}
                             </p>
                           )}
                           {validable && (
@@ -623,37 +610,34 @@ export function ATDetailModal({
 
 // ── Composant principal ───────────────────────────────────────────────────────
 
-export function KanbanView({ ats, role, onTransition }: Props) {
-  const [atData,      setAtData]      = useState<ATDemo[]>(ats);
-  const [draggedAt,   setDraggedAt]   = useState<ATDemo | null>(null);
-  const [dropTarget,  setDropTarget]  = useState<StatutATDemo | null>(null);
+export function KanbanView({ ats, role, actions }: Props) {
+  const [atData,      setAtData]      = useState<ATView[]>(ats);
+  const [draggedAt,   setDraggedAt]   = useState<ATView | null>(null);
+  const [dropTarget,  setDropTarget]  = useState<StatutAT | null>(null);
   const [dropValid,   setDropValid]   = useState<boolean | null>(null);
   const [toasts,      setToasts]      = useState<Toast[]>([]);
   const [selectedATId, setSelectedATId] = useState<string | null>(null);
-  // Dérivé de atData (pas une copie figée) pour refléter immédiatement une
-  // validation de permis faite depuis la modale de détail.
   const selectedAT = selectedATId ? atData.find(a => a.id === selectedATId) ?? null : null;
 
-  // Modal en attente
+  // Resynchronise la copie locale quand le parent refetch après une action.
+  useEffect(() => { setAtData(ats); }, [ats]);
+
   type PendingAction = {
-    at: ATDemo;
-    to: StatutATDemo;
+    at: ATView;
+    to: StatutAT;
     modalType: 'suspension' | 'audit' | 'approbation' | 'refus' | 'activation';
   };
   const [pending, setPending] = useState<PendingAction | null>(null);
 
-  // ── Toast helpers ──
-  let toastId = 0;
+  const toastIdRef = useRef(0);
   function addToast(type: Toast['type'], message: string) {
-    const id = ++toastId;
+    const id = ++toastIdRef.current;
     setToasts(prev => [...prev, { id, type, message }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
   }
 
-  // Regroupement par statut mémoïsé — évite de refiltrer la liste complète des
-  // AT à chaque re-render (ouverture de modale, toast, sélection d'une carte…).
   const atsParStatut = useMemo(() => {
-    const map = new Map<StatutATDemo, ATDemo[]>();
+    const map = new Map<StatutAT, ATView[]>();
     for (const col of COLONNES) map.set(col.statut, []);
     for (const at of atData) {
       map.get(at.statut)?.push(at);
@@ -662,7 +646,7 @@ export function KanbanView({ ats, role, onTransition }: Props) {
   }, [atData]);
 
   // ── DnD handlers ──
-  const handleDragStart = useCallback((at: ATDemo) => {
+  const handleDragStart = useCallback((at: ATView) => {
     setDraggedAt(at);
   }, []);
 
@@ -672,7 +656,7 @@ export function KanbanView({ ats, role, onTransition }: Props) {
     setDropValid(null);
   }, []);
 
-  const handleDragOver = useCallback((statut: StatutATDemo, at: ATDemo) => {
+  const handleDragOver = useCallback((statut: StatutAT, at: ATView) => {
     setDropTarget(statut);
     const check = estTransitionAutorisee(at.statut, statut, role, at);
     setDropValid(check.ok);
@@ -683,13 +667,34 @@ export function KanbanView({ ats, role, onTransition }: Props) {
     setDropValid(null);
   }, []);
 
-  function applyTransition(atId: string, newStatut: StatutATDemo, data?: unknown) {
-    setAtData(prev => prev.map(a => a.id === atId ? { ...a, statut: newStatut } : a));
-    onTransition(atId, newStatut, data);
-    addToast('success', `AT déplacée → ${COLONNES.find(c => c.statut === newStatut)?.label}`);
+  // ── Exécution réelle des transitions via les services PTW ──
+  async function executerTransition(at: ATView, to: StatutAT, data?: unknown) {
+    if (!actions) {
+      addToast('error', 'Action indisponible en lecture seule.');
+      return;
+    }
+    let ok = false;
+    if (to === StatutAT.VALIDEE) {
+      ok = await actions.validerAT(at.id);
+    } else if (to === StatutAT.APPROUVEE) {
+      ok = await actions.approuverAT(at.id, typeof data === 'string' ? data : undefined);
+    } else if (at.statut === StatutAT.APPROUVEE && to === StatutAT.ACTIVE) {
+      ok = await actions.activerAT(at.id);
+    } else if (at.statut === StatutAT.SUSPENDUE && to === StatutAT.ACTIVE) {
+      const suspension = at.suspensions.find(s => !s.date_levee);
+      if (!suspension) { addToast('error', 'Aucune suspension ouverte trouvée.'); return; }
+      ok = await actions.leverSuspensionAvecAudit(at.id, suspension.id, data as AuditFormData);
+    } else if (to === StatutAT.SUSPENDUE) {
+      ok = await actions.suspendreAT(at.id, data as SuspensionFormData);
+    } else if (to === StatutAT.CLOTUREE) {
+      ok = await actions.cloturerAT(at.id);
+    } else if (at.statut === StatutAT.VALIDEE && to === StatutAT.SOUMISE) {
+      ok = await actions.refuserAT(at.id, typeof data === 'string' ? data : '');
+    }
+    if (!ok) return; // le toast d'erreur est déjà géré par usePTWActions
   }
 
-  const handleDrop = useCallback((targetStatut: StatutATDemo) => {
+  const handleDrop = useCallback((targetStatut: StatutAT) => {
     if (!draggedAt) return;
     const check = estTransitionAutorisee(draggedAt.statut, targetStatut, role, draggedAt);
 
@@ -701,38 +706,23 @@ export function KanbanView({ ats, role, onTransition }: Props) {
 
     const modalType = necessiteModal(draggedAt.statut, targetStatut, role);
 
-    if (modalType === 'approbation') {
-      setPending({ at: draggedAt, to: targetStatut, modalType: 'approbation' });
-    } else if (modalType === 'refus') {
-      setPending({ at: draggedAt, to: targetStatut, modalType: 'refus' });
-    } else if (modalType === 'suspension') {
-      setPending({ at: draggedAt, to: targetStatut, modalType: 'suspension' });
-    } else if (modalType === 'audit') {
-      setPending({ at: draggedAt, to: targetStatut, modalType: 'audit' });
+    if (modalType) {
+      setPending({ at: draggedAt, to: targetStatut, modalType });
     } else {
-      // Transition directe sans modal
-      applyTransition(draggedAt.id, targetStatut);
+      void executerTransition(draggedAt, targetStatut);
     }
 
     handleDragEnd();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draggedAt, role, handleDragEnd]);
 
-  const handleCardClick = useCallback((at: ATDemo) => {
+  const handleCardClick = useCallback((at: ATView) => {
     setSelectedATId(at.id);
   }, []);
 
-  function handleUpdatePermis(atId: string, permisId: string, patch: Partial<PermisDemo>) {
-    setAtData(prev => prev.map(a =>
-      a.id === atId
-        ? { ...a, permis: a.permis.map(p => p.id === permisId ? { ...p, ...patch } : p) }
-        : a,
-    ));
-  }
-
   function handleModalConfirm(data: unknown) {
     if (!pending) return;
-    applyTransition(pending.at.id, pending.to, data);
+    void executerTransition(pending.at, pending.to, data);
     setPending(null);
   }
 
@@ -765,7 +755,7 @@ export function KanbanView({ ats, role, onTransition }: Props) {
         </div>
       </div>
 
-      {/* Toasts */}
+      {/* Toasts (erreurs de règle métier côté UI, avant appel service) */}
       <div className="fixed bottom-16 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none">
         {toasts.map(t => (
           <div
@@ -789,7 +779,7 @@ export function KanbanView({ ats, role, onTransition }: Props) {
           at={selectedAT}
           onClose={() => setSelectedATId(null)}
           role={role}
-          onUpdatePermis={(permisId, patch) => handleUpdatePermis(selectedAT.id, permisId, patch)}
+          actions={actions}
         />
       )}
 

@@ -6,7 +6,9 @@ import {
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PermisDemo, ATDemo, LABELS_PERMIS, ICONES_PERMIS } from './demo.data';
+import type { PermisView, ATView } from '../../types/dashboardView';
+import { LABELS_PERMIS, ICONES_PERMIS } from '../../types/dashboardView';
+import { StatutPermis } from '../../types';
 import { useModalA11y } from '@/hooks/useModalA11y';
 
 function fmtDate(iso?: string): string {
@@ -18,10 +20,10 @@ function fmtDate(iso?: string): string {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  permis: PermisDemo;
-  at: ATDemo;
+  permis: PermisView;
+  at: ATView;
   onClose: () => void;
-  onValider: (commentaire: string, checklist_reponses: PermisDemo['checklist_reponses']) => void;
+  onValider: (commentaire: string, checklist_reponses: PermisView['checklist_reponses']) => void;
   onRejeter: (motif: string) => void;
 }
 
@@ -89,7 +91,7 @@ export function PermisValidationModal({ permis, at, onClose, onValider, onRejete
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(modalRef, onClose);
 
-  const enAttente = permis.statut === 'EN_ATTENTE';
+  const enAttente = permis.statut === StatutPermis.EN_ATTENTE;
 
   function handlePointChange(questionId: string, reponse: 'OUI' | 'NON' | 'N_A') {
     if (!enAttente) return;
@@ -168,12 +170,12 @@ export function PermisValidationModal({ permis, at, onClose, onValider, onRejete
         </div>
 
         {/* Décision déjà prise — consultation seule */}
-        {permis.statut === 'VALIDE' && (
+        {permis.statut === StatutPermis.VALIDE && (
           <div className="bg-success-50 border-b border-success-100 px-5 py-3 flex items-start gap-2.5">
             <CheckCircle2 size={16} className="text-success-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-[color:var(--badge-success-text)] text-sm font-semibold">
-                Permis validé{permis.valide_par ? ` par ${permis.valide_par}` : ''}{permis.valide_le ? ` le ${fmtDate(permis.valide_le)}` : ''}
+                Permis validé{permis.valide_le ? ` le ${fmtDate(permis.valide_le)}` : ''}
               </p>
               {permis.commentaire_validation && (
                 <p className="text-[color:var(--text-secondary)] text-xs mt-0.5">{permis.commentaire_validation}</p>
@@ -181,7 +183,7 @@ export function PermisValidationModal({ permis, at, onClose, onValider, onRejete
             </div>
           </div>
         )}
-        {permis.statut === 'REJETE' && (
+        {permis.statut === StatutPermis.REJETE && (
           <div className="bg-danger-50 border-b border-danger-100 px-5 py-3 flex items-start gap-2.5">
             <XCircle size={16} className="text-danger-500 flex-shrink-0 mt-0.5" />
             <div>
