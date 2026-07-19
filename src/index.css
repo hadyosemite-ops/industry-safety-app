@@ -1,0 +1,452 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE — thème "cockpit sombre" / glassmorphism cyan (inspiré FleetOS)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --color-brand:    #00d4ff;
+    --color-accent:   #00d4ff;
+    --sidebar-width:  240px;
+    --header-height:  60px;
+    --radius-card:    16px;
+
+    /* Tokens FleetOS — repris pour dégradés / effets non exprimables en Tailwind pur */
+    --bg-app:         #020817;
+    --bg-sidebar:     linear-gradient(180deg, #050e1f 0%, #020817 100%);
+    --bg-header:      rgba(5,14,31,0.9);
+    --bg-card:        rgba(13,27,46,0.85);
+    --bg-elevated:    #0a1628;
+    --bg-hover:       rgba(0,212,255,0.05);
+    --bg-input:       #0a1628;
+
+    --border:         #1e3a5f;
+    --border-strong:  #234878;
+    --border-faint:   rgba(30,58,95,0.4);
+    --card-border:    rgba(30,58,95,0.6);
+    --card-backdrop:  blur(14px);
+
+    --text-primary:   #e8f4fd;
+    --text-secondary: #7bacc8;
+    --text-muted:     #4a7a9b;
+    --text-faint:     #2a5070;
+
+    --badge-navy-text:    #4de6ff;
+    --badge-success-text: #33ea92;
+    --badge-danger-text:  #ff7373;
+    --badge-amber-text:   #ffc233;
+    --badge-safety-text:  #ff8c42;
+    --badge-purple-text:  #c4b5fd;
+    --badge-teal-text:    #5eead4;
+    --tab-active-text:    #e8f4fd;
+
+    /* Palette des sections d'audit (COULEURS_SECTION) — 9 teintes distinctes */
+    --section-epi-text:         #93c5fd;
+    --section-proprete-text:    #c4b5fd;
+    --section-hauteur-text:     #fcd34d;
+    --section-chimique-text:    #fca5a5;
+    --section-electricite-text: #fdba74;
+    --section-incendie-text:    #f9a8d4;
+    --section-manutention-text: #5eead4;
+    --section-ptw-text:         #4de6ff;
+    --section-secours-text:     #6ee7b7;
+  }
+
+  /* ── Mode clair — mêmes tokens, valeurs adaptées à un fond blanc.
+     Note : la sidebar reste volontairement sombre dans les deux thèmes
+     (identité visuelle "cockpit"), --bg-sidebar n'est donc pas redéfini ici. ── */
+  [data-theme="light"] {
+    --bg-app:         #f3f6fa;
+    --bg-header:      rgba(255,255,255,0.9);
+    --bg-card:        rgba(255,255,255,0.9);
+    --bg-elevated:    #ffffff;
+    --bg-hover:       rgba(0,150,199,0.06);
+    --bg-input:       #ffffff;
+
+    --border:         #d7e0ea;
+    --border-strong:  #c2cedd;
+    --border-faint:   rgba(148,163,184,0.35);
+    --card-border:    rgba(148,163,184,0.4);
+
+    --text-primary:   #0f2438;
+    --text-secondary: #3d5a76;
+    --text-muted:     #6b8299;
+    --text-faint:     #94a7b8;
+
+    /* Les couleurs de badges "glow" sombres sont trop peu contrastées sur
+       blanc — on utilise des teintes plus foncées et saturées à la place. */
+    --badge-navy-text:    #0077aa;
+    --badge-success-text: #0a8f52;
+    --badge-danger-text:  #d42222;
+    --badge-amber-text:   #a35b00;
+    --badge-safety-text:  #c2560f;
+    --badge-purple-text:  #6d28d9;
+    --badge-teal-text:    #0d7d70;
+    --tab-active-text:    #04405c;
+
+    /* Palette des sections d'audit — teintes foncées/saturées pour rester lisibles sur blanc */
+    --section-epi-text:         #1d4ed8;
+    --section-proprete-text:    #6d28d9;
+    --section-hauteur-text:     #92400e;
+    --section-chimique-text:    #b91c1c;
+    --section-electricite-text: #c2410c;
+    --section-incendie-text:    #be185d;
+    --section-manutention-text: #0d7d70;
+    --section-ptw-text:         #0077aa;
+    --section-secours-text:     #047857;
+  }
+
+  /* Force le thème sombre localement, quel que soit data-theme sur <html> —
+     réservé à PermisQRPage (page terrain via QR code, sans accès au toggle,
+     pensée pour rester sombre : lisibilité extérieure, économie batterie). */
+  .theme-force-dark {
+    --bg-app:         #020817;
+    --bg-header:      rgba(5,14,31,0.9);
+    --bg-card:        rgba(13,27,46,0.85);
+    --bg-elevated:    #0a1628;
+    --bg-hover:       rgba(0,212,255,0.05);
+    --bg-input:       #0a1628;
+
+    --border:         #1e3a5f;
+    --border-strong:  #234878;
+    --border-faint:   rgba(30,58,95,0.4);
+    --card-border:    rgba(30,58,95,0.6);
+
+    --text-primary:   #e8f4fd;
+    --text-secondary: #7bacc8;
+    --text-muted:     #4a7a9b;
+    --text-faint:     #2a5070;
+
+    --badge-navy-text:    #4de6ff;
+    --badge-success-text: #33ea92;
+    --badge-danger-text:  #ff7373;
+    --badge-amber-text:   #ffc233;
+    --badge-safety-text:  #ff8c42;
+    --badge-purple-text:  #c4b5fd;
+    --badge-teal-text:    #5eead4;
+    --tab-active-text:    #e8f4fd;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply font-sans;
+    background: radial-gradient(ellipse 1200px 800px at 15% -10%, rgba(0,212,255,0.07), transparent 60%),
+                var(--bg-app);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+    color: var(--text-primary);
+  }
+
+  ::selection { background: rgba(0,212,255,0.25); color: #e8f4fd; }
+
+  /* Focus clavier visible et cohérent sur tous les éléments interactifs.
+     :focus-visible évite d'afficher l'anneau lors d'un simple clic souris. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid #00d4ff;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPOSANTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer components {
+
+  /* ── Boutons ─────────────────────────────────────────────────────────── */
+
+  .btn {
+    @apply inline-flex items-center gap-2 font-semibold transition-all duration-150
+           rounded-lg select-none whitespace-nowrap
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply btn text-sm px-4 py-2 shadow-sm active:scale-[0.98];
+    background: linear-gradient(135deg, #00d4ff, #0077aa);
+    color: #02101f;
+  }
+  .btn-primary:hover  { filter: brightness(1.08); }
+  .btn-primary:active { filter: brightness(0.96); }
+
+  .btn-secondary {
+    @apply btn text-sm px-4 py-2 active:scale-[0.98];
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover  { background: rgba(0,212,255,0.06); border-color: var(--border-strong); color: var(--text-primary); }
+  .btn-secondary:active { filter: brightness(0.95); }
+
+  .btn-danger {
+    @apply btn text-sm px-4 py-2 text-white shadow-sm active:scale-[0.98];
+    background-color: #d42222;
+  }
+  .btn-danger:hover  { background-color: #e63939; }
+  .btn-danger:active { background-color: #b91c1c; }
+
+  .btn-ghost {
+    @apply btn text-sm px-3 py-2;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover  { color: var(--text-primary); background: var(--bg-hover); }
+  .btn-ghost:active { background: rgba(0,212,255,0.10); }
+
+  .btn-icon {
+    @apply inline-flex items-center justify-center rounded-lg transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    color: var(--text-muted);
+    background: transparent;
+  }
+  .btn-icon:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .btn-icon-sm { @apply btn-icon w-7 h-7; }
+  .btn-icon-md { @apply btn-icon w-8 h-8; }
+  .btn-icon-lg { @apply btn-icon w-9 h-9; }
+
+  /* ── Formulaires ─────────────────────────────────────────────────────── */
+
+  .form-label {
+    @apply block text-sm font-semibold mb-1.5 tracking-tight;
+    color: var(--text-secondary);
+  }
+
+  .form-hint  { @apply block text-xs mt-1; color: var(--text-muted); }
+
+  .form-error {
+    @apply flex items-center gap-1 text-xs mt-1.5 font-medium;
+    color: var(--badge-danger-text);
+  }
+
+  .form-input {
+    @apply w-full px-3 py-2.5 text-sm rounded-lg
+           placeholder:text-transparent
+           focus:outline-none focus:ring-2 focus:border-transparent
+           transition-all duration-150;
+    background: var(--bg-input);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+  }
+  .form-input::placeholder { color: var(--text-faint); }
+  .form-input:focus { --tw-ring-color: rgba(0,212,255,0.35); border-color: #00d4ff; }
+
+  .form-input-error {
+    border-color: #ff4444;
+  }
+  .form-input-error:focus { --tw-ring-color: rgba(255,68,68,0.3); }
+
+  .form-select {
+    @apply form-input appearance-none cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237bacc8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 2.25rem;
+  }
+  .form-select option { background: #0a1628; color: #e8f4fd; }
+
+  .form-textarea { @apply form-input resize-none; }
+
+  /* Icône native du calendrier — inversée pour rester visible sur fond sombre */
+  input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; border-radius: 4px; padding: 2px; filter: invert(1) brightness(1.4); }
+
+  /* ── Cards ───────────────────────────────────────────────────────────── */
+
+  .card {
+    @apply rounded-2xl;
+    background: var(--bg-card);
+    backdrop-filter: var(--card-backdrop);
+    -webkit-backdrop-filter: var(--card-backdrop);
+    border: 1px solid var(--card-border);
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 cursor-pointer;
+  }
+  .card-hover:hover {
+    box-shadow: 0 8px 28px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,212,255,0.10);
+    border-color: rgba(0,212,255,0.25);
+    @apply -translate-y-0.5;
+  }
+  .card-hover:active { @apply translate-y-0; }
+
+  /* ── Badges ──────────────────────────────────────────────────────────── */
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full
+           text-xs font-semibold border whitespace-nowrap;
+  }
+
+  .badge-dot { @apply w-1.5 h-1.5 rounded-full flex-shrink-0; }
+
+  /* Variants — pastilles translucides "glass" */
+  .badge-navy    { @apply badge; background: rgba(0,212,255,0.10); color: var(--badge-navy-text); border-color: rgba(0,212,255,0.3); }
+  .badge-success { @apply badge; background: rgba(0,230,118,0.10); color: var(--badge-success-text); border-color: rgba(0,230,118,0.3); }
+  .badge-danger  { @apply badge; background: rgba(255,68,68,0.10); color: var(--badge-danger-text); border-color: rgba(255,68,68,0.3); }
+  .badge-amber   { @apply badge; background: rgba(255,179,0,0.10); color: var(--badge-amber-text); border-color: rgba(255,179,0,0.3); }
+  .badge-safety  { @apply badge; background: rgba(255,140,66,0.10); color: var(--badge-safety-text); border-color: rgba(255,140,66,0.3); }
+  .badge-neutral { @apply badge; background: var(--bg-elevated); color: var(--text-secondary); border-color: var(--border); }
+
+  /* ── Section title ───────────────────────────────────────────────────── */
+
+  .section-title {
+    @apply text-[10px] font-bold uppercase tracking-widest;
+    color: var(--text-faint);
+  }
+
+  /* ── KPI card ────────────────────────────────────────────────────────── */
+
+  .kpi-card { @apply card p-5 flex flex-col gap-3; }
+
+  /* ── Skeleton ────────────────────────────────────────────────────────── */
+
+  .skeleton { @apply rounded-lg animate-pulse; background: var(--bg-elevated); }
+
+  /* ── Table ───────────────────────────────────────────────────────────── */
+
+  .table-container { @apply card overflow-hidden; }
+
+  .table-head th {
+    @apply px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest border-b;
+    color: var(--text-faint);
+    background: var(--bg-elevated);
+    border-color: var(--border-faint);
+  }
+
+  .table-row {
+    @apply border-b transition-colors duration-100 last:border-0;
+    border-color: var(--border-faint);
+  }
+  .table-row:hover { background: rgba(0,212,255,0.04); }
+
+  .table-cell { @apply px-4 py-3 text-sm; color: var(--text-secondary); }
+
+  /* ── Tabs pill ───────────────────────────────────────────────────────── */
+
+  .tabs-container {
+    @apply flex gap-1 p-1 rounded-xl;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+  }
+
+  .tab-pill {
+    @apply flex items-center gap-2 px-3.5 py-1.5 text-sm font-medium rounded-lg
+           transition-all duration-150 whitespace-nowrap cursor-pointer;
+  }
+
+  .tab-pill-active   { @apply tab-pill; background: rgba(0,212,255,0.12); color: var(--tab-active-text); box-shadow: 0 0 0 1px rgba(0,212,255,0.25); }
+  .tab-pill-inactive { @apply tab-pill; color: var(--text-muted); }
+  .tab-pill-inactive:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+  /* ── Modal ───────────────────────────────────────────────────────────── */
+
+  .modal-backdrop   { @apply fixed inset-0 z-50 flex items-center justify-center p-4; }
+  .modal-overlay    { @apply absolute inset-0 backdrop-blur-sm; background: rgba(0,3,10,0.72); }
+
+  .modal-container {
+    @apply relative rounded-2xl w-full flex flex-col overflow-hidden;
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.30);
+    animation: fadeInScale 0.2s ease-out;
+  }
+
+  .modal-header {
+    @apply px-6 py-4 flex items-start justify-between gap-4 flex-shrink-0;
+    background: linear-gradient(135deg, rgba(0,212,255,0.14), rgba(0,119,170,0.10));
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-footer {
+    @apply px-6 py-4 flex items-center justify-end gap-3 flex-shrink-0;
+    border-top: 1px solid var(--border-faint);
+    background: rgba(255,255,255,0.015);
+  }
+
+  /* ── Empty state ─────────────────────────────────────────────────────── */
+
+  .empty-state {
+    @apply flex flex-col items-center justify-center text-center py-16 px-6;
+  }
+
+  /* ── Divider ─────────────────────────────────────────────────────────── */
+
+  .divider { border-top: 1px solid var(--border-faint); }
+
+  /* ── Search input ────────────────────────────────────────────────────── */
+
+  .search-input { @apply form-input pl-9; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITAIRES
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  .text-balance   { text-wrap: balance; }
+  .no-scrollbar   { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .glass-card {
+    background: var(--bg-card);
+    backdrop-filter: var(--card-backdrop);
+    -webkit-backdrop-filter: var(--card-backdrop);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+  }
+  .glow-accent  { box-shadow: 0 0 24px rgba(0, 212, 255, 0.14); }
+  .glow-success { box-shadow: 0 0 24px rgba(0, 230, 118, 0.14); }
+  .glow-danger  { box-shadow: 0 0 24px rgba(255, 68, 68, 0.14); }
+  .glow-warning { box-shadow: 0 0 24px rgba(255, 179, 0, 0.14); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: var(--bg-elevated); }
+::-webkit-scrollbar-thumb    { background: var(--border); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS (keyframes déclarées ici pour @apply + composants)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.animate-fade-in-up { animation: fadeInUp 0.25s ease-out; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+.animate-slide-in { animation: slideIn 0.2s ease-out; }
+
+@keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(1.3); } }
+.pulse-dot { animation: pulseDot 2s ease-in-out infinite; }
