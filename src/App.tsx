@@ -11,6 +11,7 @@ import { ToastProvider } from '@/components/ui/ToastProvider';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { LoginPage } from '@/components/auth/LoginPage';
+import { UpdatePasswordPage } from '@/components/auth/UpdatePasswordPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 // ── Modules chargés à la demande (code-splitting par route) ────────────────────
@@ -403,6 +404,7 @@ export default function App() {
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/update-password" element={<UpdatePasswordPage />} />
                   <Route path="/permis/:token" element={<PermisQRPage />} />
                   <Route path="*" element={<Layout />} />
                 </Routes>

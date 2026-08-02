@@ -29,6 +29,8 @@ interface AuthApi {
   ready: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthApi | null>(null);
@@ -79,6 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  async function resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/update-password`,
+    });
+    if (error) return { error: traduireErreurAuth(error.message) };
+    return { error: null };
+  }
+
+  async function updatePassword(newPassword: string) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: traduireErreurAuth(error.message) };
+    return { error: null };
+  }
+
   const api: AuthApi = {
     session,
     user: session?.user ?? null,
@@ -87,6 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ready: !loading && (!session?.user || !profileLoading),
     signIn,
     signOut,
+    resetPassword,
+    updatePassword,
   };
 
   return <AuthContext.Provider value={api}>{children}</AuthContext.Provider>;
@@ -103,5 +121,7 @@ export function useAuth(): AuthApi {
 function traduireErreurAuth(message: string): string {
   if (message.includes('Invalid login credentials')) return 'Email ou mot de passe incorrect.';
   if (message.includes('Email not confirmed')) return 'Compte non confirmé — vérifiez votre email.';
+  if (message.includes('rate limit')) return 'Trop de tentatives d\'envoi d\'email — réessayez dans quelques minutes.';
+  if (message.includes('Password should be at least')) return 'Le mot de passe doit contenir au moins 6 caractères.';
   return message;
 }
