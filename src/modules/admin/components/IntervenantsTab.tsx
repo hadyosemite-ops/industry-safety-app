@@ -249,8 +249,9 @@ function IntervenantModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="modal-overlay" onClick={pending ? undefined : onClose} />
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="modal-overlay fixed" onClick={pending ? undefined : onClose} />
+      <div className="relative min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
         ref={modalRef}
         tabIndex={-1}
@@ -336,6 +337,7 @@ function IntervenantModal({
             </button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   );
