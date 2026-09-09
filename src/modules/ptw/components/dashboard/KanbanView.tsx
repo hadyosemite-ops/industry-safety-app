@@ -8,13 +8,19 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { ATView, PermisView } from '../../types/dashboardView';
 import { ICONES_PERMIS, LABELS_PERMIS } from '../../types/dashboardView';
-import { StatutAT, StatutPermis } from '../../types';
+import { StatutAT, StatutPermis, RoleUtilisateur } from '../../types';
+import type { PermisFormData } from '../creation/ATCreationWizard';
 import { KanbanCard } from './KanbanCard';
 import { SuspensionModal, SuspensionFormData } from './SuspensionModal';
 import { AuditModal, AuditFormData } from './AuditModal';
 import { PermisValidationModal } from './PermisValidationModal';
+import { AjouterPermisModal } from './AjouterPermisModal';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { useAuth } from '@/contexts/AuthContext';
+import { toRoleUtilisateurs } from '../../utils/roles';
 import type { PTWActions } from '../../hooks/usePTWActions';
+
+const ROLES_COMPLETER_BROUILLON = [RoleUtilisateur.DEMANDEUR, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.ADMIN];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,6 +45,14 @@ interface ColonneDef {
 }
 
 const COLONNES: ColonneDef[] = [
+  {
+    statut:    StatutAT.BROUILLON,
+    label:     'Brouillon',
+    emoji:     '📝',
+    headerCls: 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]',
+    dropOkCls: 'ring-2 ring-[var(--border-strong)] bg-[var(--bg-hover)]',
+    dropNoCls: 'ring-2 ring-danger-300 bg-danger-50/30',
+  },
   {
     statut:    StatutAT.SOUMISE,
     label:     'Soumise',
@@ -396,8 +410,31 @@ export function ATDetailModal({
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(modalRef, onClose);
 
+  const { profile } = useAuth();
   const peutValider = role === 'ANIMATEUR' && !!actions;
   const [permisModalOuvert, setPermisModalOuvert] = useState<PermisView | null>(null);
+  const [ajoutPermisOuvert, setAjoutPermisOuvert] = useState(false);
+  const [soumissionEnCours, setSoumissionEnCours] = useState(false);
+
+  // Brouillon : le créateur (ou HSE Manager/Admin) peut ajouter des permis et
+  // soumettre l'AT depuis ici — indispensable pour les AT créées via
+  // l'Assistant HSE, qui ne passent pas par l'assistant de création pas à pas.
+  const rolesUtilisateur = toRoleUtilisateurs(profile?.roles);
+  const peutCompleterBrouillon = !!actions
+    && at.statut === StatutAT.BROUILLON
+    && rolesUtilisateur.some(r => ROLES_COMPLETER_BROUILLON.includes(r));
+
+  async function handleAjouterPermis(payload: PermisFormData): Promise<boolean> {
+    if (!actions) return false;
+    return actions.ajouterPermis(at.id, payload);
+  }
+
+  async function handleSoumettre() {
+    if (!actions) return;
+    setSoumissionEnCours(true);
+    await actions.soumettreAT(at.id);
+    setSoumissionEnCours(false);
+  }
 
   async function handleValider(commentaire: string, checklist_reponses: PermisView['checklist_reponses']) {
     if (!permisModalOuvert || !actions) return;
@@ -523,9 +560,22 @@ export function ATDetailModal({
                 <p className="text-[10px] font-bold text-[color:var(--text-muted)] uppercase tracking-wide">
                   Permis associés
                 </p>
-                <span className="text-xs font-bold text-[color:var(--text-secondary)]">
-                  {validesCount}/{at.permis.length} validé{validesCount > 1 ? 's' : ''}
-                </span>
+                <div className="flex items-center gap-2">
+                  {at.permis.length > 0 && (
+                    <span className="text-xs font-bold text-[color:var(--text-secondary)]">
+                      {validesCount}/{at.permis.length} validé{validesCount > 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {peutCompleterBrouillon && (
+                    <button
+                      type="button"
+                      onClick={() => setAjoutPermisOuvert(true)}
+                      className="text-xs font-semibold text-[#0077aa] hover:underline"
+                    >
+                      + Ajouter un permis
+                    </button>
+                  )}
+                </div>
               </div>
 
               {at.permis.length === 0 ? (
@@ -583,14 +633,33 @@ export function ATDetailModal({
         </div>
 
         {/* ── Footer ── */}
-        <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-hover)] flex justify-end flex-shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 bg-[#0077aa] text-white rounded-xl text-sm font-semibold hover:bg-[#0077aa]/90 transition-colors"
-          >
-            Fermer
-          </button>
+        <div className="px-6 py-4 border-t border-[var(--border)] bg-[var(--bg-hover)] flex items-center justify-between gap-3 flex-shrink-0">
+          {peutCompleterBrouillon ? (
+            <p className="text-xs text-[color:var(--text-muted)]">
+              {at.permis.length === 0
+                ? "Ajoutez au moins un permis avant de soumettre l'AT."
+                : "Prête à être soumise pour validation."}
+            </p>
+          ) : <span />}
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold btn-ghost"
+            >
+              Fermer
+            </button>
+            {peutCompleterBrouillon && (
+              <button
+                type="button"
+                onClick={() => void handleSoumettre()}
+                disabled={at.permis.length === 0 || soumissionEnCours}
+                className="px-5 py-2.5 bg-[#0077aa] text-white rounded-xl text-sm font-semibold hover:bg-[#0077aa]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {soumissionEnCours ? 'Soumission…' : "Soumettre l'AT"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -602,6 +671,14 @@ export function ATDetailModal({
         onClose={() => setPermisModalOuvert(null)}
         onValider={handleValider}
         onRejeter={handleRejeter}
+      />
+    )}
+
+    {ajoutPermisOuvert && (
+      <AjouterPermisModal
+        numeroAt={at.numero_at}
+        onClose={() => setAjoutPermisOuvert(false)}
+        onSave={handleAjouterPermis}
       />
     )}
     </>

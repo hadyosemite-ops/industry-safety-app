@@ -25,7 +25,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { AUDITS_DEMO } from '@/modules/audit/data/demo.data';
 import { useATDashboardData } from '../../hooks/useATDashboardData';
-import { usePTWActions } from '../../hooks/usePTWActions';
+import { usePTWActions, type PTWActions } from '../../hooks/usePTWActions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -316,11 +316,12 @@ function AlertesUrgentes({ ats }: { ats: ATView[] }) {
 // ── Liste AT filtrée (drill-down depuis une carte KPI) ────────────────────────
 
 function ListeATModal({
-  title, ats, onClose,
+  title, ats, onClose, actions,
 }: {
   title: string;
   ats:   ATView[];
   onClose: () => void;
+  actions: PTWActions;
 }) {
   const [selected, setSelected] = useState<ATView | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -380,7 +381,7 @@ function ListeATModal({
         </div>
       </div>
 
-      {selected && <ATDetailModal at={selected} onClose={() => setSelected(null)} />}
+      {selected && <ATDetailModal at={selected} onClose={() => setSelected(null)} actions={actions} />}
     </>
   );
 }
@@ -506,7 +507,7 @@ function EcartsAudit() {
 
 // ── Vue générale ──────────────────────────────────────────────────────────────
 
-function VueGenerale({ ats, loading, error }: { ats: ATView[]; loading: boolean; error: string | null }) {
+function VueGenerale({ ats, loading, error, actions }: { ats: ATView[]; loading: boolean; error: string | null; actions: PTWActions }) {
   const [listeFiltre, setListeFiltre] = useState<{ title: string; ats: ATView[] } | null>(null);
 
   const listes = useMemo(() => ({
@@ -603,13 +604,14 @@ function VueGenerale({ ats, loading, error }: { ats: ATView[]; loading: boolean;
 
       {/* Suivi des autorisations — Kanban (lecture seule) */}
       <p className="section-title">Suivi des autorisations</p>
-      <KanbanView ats={ats} role="OBSERVATEUR" />
+      <KanbanView ats={ats} role="OBSERVATEUR" actions={actions} />
 
       {listeFiltre && (
         <ListeATModal
           title={listeFiltre.title}
           ats={listeFiltre.ats}
           onClose={() => setListeFiltre(null)}
+          actions={actions}
         />
       )}
     </div>
@@ -647,7 +649,7 @@ export function DashboardAT() {
 
       <main className="max-w-6xl mx-auto px-6 py-6">
 
-        {onglet === 'generale' && <VueGenerale ats={ats} loading={loading} error={error} />}
+        {onglet === 'generale' && <VueGenerale ats={ats} loading={loading} error={error} actions={actions} />}
 
         {onglet === 'animateur' && (
           <div className="-mx-6">

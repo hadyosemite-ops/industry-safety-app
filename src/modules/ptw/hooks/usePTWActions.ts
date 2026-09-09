@@ -20,6 +20,7 @@ import {
   type ChecklistReponse,
 } from '../types';
 import { pickRole, toRoleUtilisateurs } from '../utils/roles';
+import type { PermisFormData } from '../components/creation/ATCreationWizard';
 
 export interface SuspensionInput {
   type_ecart: TypeEcart;
@@ -104,6 +105,41 @@ export function usePTWActions(onDone?: () => void | Promise<void>) {
     toast.error("Le refus d'une AT validée n'est pas pris en charge par le workflow métier actuel.");
     return false;
   }, [toast]);
+
+  /**
+   * Complète un brouillon d'AT (créé manuellement ou via l'Assistant HSE) en
+   * lui ajoutant un permis — sans quoi une AT en BROUILLON ne peut jamais être
+   * soumise (le workflow exige au moins un permis).
+   */
+  const ajouterPermis = useCallback(async (atId: string, data: PermisFormData): Promise<boolean> => {
+    const role = besoinRole([RoleUtilisateur.DEMANDEUR, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.ADMIN]);
+    if (!role) return false;
+    const { error } = await permisService.creerPermis(
+      {
+        at_id: atId,
+        type_permis: data.type_permis,
+        checklist_reponses: data.checklist_reponses,
+        mesures_prevention: data.mesures_prevention,
+        epi_requis: data.epi_requis,
+        equipements_concernes: data.equipements_concernes,
+        intervenants: data.intervenants,
+      },
+      acteurId, role,
+    );
+    if (error) { toast.error(error.message); return false; }
+    await apresSucces('Permis ajouté.');
+    return true;
+  }, [acteurId, besoinRole, toast, apresSucces]);
+
+  /** Soumet un brouillon d'AT (BROUILLON → SOUMISE) pour validation Animateur. */
+  const soumettreAT = useCallback(async (atId: string): Promise<boolean> => {
+    const role = besoinRole([RoleUtilisateur.DEMANDEUR, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.ADMIN]);
+    if (!role) return false;
+    const { error } = await atService.soumettre(atId, acteurId, role);
+    if (error) { toast.error(error.message); return false; }
+    await apresSucces('AT soumise pour validation.');
+    return true;
+  }, [acteurId, besoinRole, toast, apresSucces]);
 
   const activerAT = useCallback(async (atId: string): Promise<boolean> => {
     const role = besoinRole([RoleUtilisateur.RESP_ZONE, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.ANIMATEUR_SECURITE]);
@@ -206,6 +242,8 @@ export function usePTWActions(onDone?: () => void | Promise<void>) {
     validerAT,
     approuverAT,
     refuserAT,
+    ajouterPermis,
+    soumettreAT,
     activerAT,
     suspendreAT,
     cloturerAT,

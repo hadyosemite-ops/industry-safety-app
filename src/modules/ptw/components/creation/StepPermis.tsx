@@ -7,7 +7,7 @@ import { PermisFormCard } from './PermisFormCard';
 
 // ─── Catalogue des types de permis ───────────────────────────────────────────
 
-const TYPES_PERMIS: {
+export const TYPES_PERMIS: {
   value: TypePermis;
   label: string;
   icon: string;
@@ -154,7 +154,7 @@ export const CHECKLISTS_DEFAUT: Record<TypePermis, { question_id: string; questi
   ],
 };
 
-function creerPermisVide(type: TypePermis): PermisFormData {
+export function creerPermisVide(type: TypePermis): PermisFormData {
   const checklist = CHECKLISTS_DEFAUT[type] ?? [];
   return {
     _id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
