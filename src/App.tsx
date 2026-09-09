@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import {
-  Shield, AlertTriangle, ClipboardCheck, Building2,
+  Shield, AlertTriangle, ClipboardCheck, Building2, Database,
   ChevronRight, ChevronLeft, Menu, X, Sun, Moon, LogOut,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState, type ElementType } from 'react';
@@ -13,6 +13,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { LoginPage } from '@/components/auth/LoginPage';
 import { UpdatePasswordPage } from '@/components/auth/UpdatePasswordPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { RoleUtilisateur } from '@/modules/ptw/types';
 
 // ── Modules chargés à la demande (code-splitting par route) ────────────────────
 // Chaque module HSE (PTW, audit, accidentologie, prestataires) est volumineux
@@ -37,6 +38,9 @@ const DashboardAudit = lazy(() =>
 const DashboardPrestataires = lazy(() =>
   import('@/modules/prestataires/components/DashboardPrestataires').then(m => ({ default: m.DashboardPrestataires })),
 );
+const DashboardAdmin = lazy(() =>
+  import('@/modules/admin/components/DashboardAdmin').then(m => ({ default: m.DashboardAdmin })),
+);
 
 // ── Config navigation ─────────────────────────────────────────────────────────
 
@@ -47,6 +51,8 @@ interface NavEntry {
   end?: boolean;
   badge?: number;
   description?: string;
+  /** Si fourni, l'entrée n'est visible que pour les utilisateurs ayant au moins un de ces rôles */
+  roles?: RoleUtilisateur[];
 }
 
 interface NavGroup {
@@ -99,6 +105,19 @@ const NAV_GROUPS: NavGroup[] = [
       },
     ],
   },
+  {
+    label: 'Administration',
+    items: [
+      {
+        to: '/base-donnees',
+        icon: Database,
+        label: 'Base de données',
+        end: true,
+        description: 'Sites, zones, intervenants',
+        roles: [RoleUtilisateur.ADMIN, RoleUtilisateur.HSE_MANAGER],
+      },
+    ],
+  },
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -118,6 +137,19 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
     : '··';
   const nomComplet = profile ? `${profile.prenom} ${profile.nom.charAt(0)}.` : 'Chargement…';
   const roleLabel = profile?.roles?.[0]?.replace(/_/g, ' ') ?? '';
+
+  // Filtre les entrées de navigation dont l'accès est restreint à certains
+  // rôles (ex. "Base de données" → ADMIN/HSE_MANAGER) puis retire les groupes
+  // qui se retrouveraient vides. Tant que le profil n'est pas encore chargé,
+  // les entrées restreintes restent masquées par défaut (fail-closed).
+  const groupesVisibles = NAV_GROUPS
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item =>
+        !item.roles || item.roles.some(r => profile?.roles?.includes(r)),
+      ),
+    }))
+    .filter(group => group.items.length > 0);
 
   return (
     <aside
@@ -175,7 +207,7 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden no-scrollbar">
-        {NAV_GROUPS.map(group => (
+        {groupesVisibles.map(group => (
           <div key={group.label}>
             {!collapsed && (
               <p className="px-3 mb-1.5 text-[10px] font-bold text-white/25 uppercase tracking-widest truncate">
@@ -384,6 +416,14 @@ function Layout() {
               <Route path="/accidentologie" element={<ProtectedRoute><DashboardAccidentologie /></ProtectedRoute>} />
               <Route path="/audit"          element={<ProtectedRoute><DashboardAudit /></ProtectedRoute>} />
               <Route path="/prestataires"   element={<ProtectedRoute><DashboardPrestataires /></ProtectedRoute>} />
+              <Route
+                path="/base-donnees"
+                element={
+                  <ProtectedRoute roles={[RoleUtilisateur.ADMIN, RoleUtilisateur.HSE_MANAGER]}>
+                    <DashboardAdmin />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </Suspense>
         </ErrorBoundary>
