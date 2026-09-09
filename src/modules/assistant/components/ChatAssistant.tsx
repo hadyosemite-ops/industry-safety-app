@@ -16,8 +16,8 @@
 // wizard de création d'AT (cf. hideSidebar dans App.tsx).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
-import { HardHat, X, Send, AlertTriangle, Check, Ban } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { HardHat, X, Send, AlertTriangle, Check, Ban, Mic, MicOff } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -90,6 +90,62 @@ export function ChatAssistant() {
   const [busy, setBusy] = useState(false);
   const [pendingTool, setPendingTool] = useState<ToolUseBlock | null>(null);
   const confirmResolverRef = useRef<((confirmed: boolean) => void) | null>(null);
+
+  // ── Dictée vocale (Web Speech API — reconnaissance côté navigateur, sans
+  // service tiers). Non prise en charge par tous les navigateurs (OK sur
+  // Chrome/Edge, absente sur Firefox) : on prévient l'utilisateur le cas
+  // échéant plutôt que d'afficher un bouton qui ne fait rien. ──
+  const [ecoute, setEcoute] = useState(false);
+  const reconnaissanceRef = useRef<any>(null);
+  const baseSaisieRef = useRef('');
+
+  useEffect(() => {
+    return () => { reconnaissanceRef.current?.stop(); };
+  }, []);
+
+  function demarrerDictee() {
+    const SpeechRecognitionCtor =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      toast.error("La dictée vocale n'est pas prise en charge par ce navigateur (essayez Chrome ou Edge).");
+      return;
+    }
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    baseSaisieRef.current = input.trim() ? `${input.trim()} ` : '';
+
+    recognition.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(baseSaisieRef.current + transcript);
+    };
+    recognition.onerror = (event: any) => {
+      setEcoute(false);
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        toast.error("Erreur de dictée vocale — vérifiez l'autorisation du microphone.");
+      }
+    };
+    recognition.onend = () => setEcoute(false);
+
+    recognition.start();
+    reconnaissanceRef.current = recognition;
+    setEcoute(true);
+  }
+
+  function arreterDictee() {
+    reconnaissanceRef.current?.stop();
+    setEcoute(false);
+  }
+
+  function toggleDictee() {
+    if (busy) return;
+    if (ecoute) arreterDictee();
+    else demarrerDictee();
+  }
 
   const ctx: ToolContext = {
     userId: profile?.id ?? '',
@@ -193,6 +249,7 @@ export function ChatAssistant() {
   async function envoyer() {
     const texte = input.trim();
     if (!texte || busy) return;
+    if (ecoute) arreterDictee();
     setInput('');
     const messageUtilisateur: ChatMessage = { role: 'user', content: [{ type: 'text', text: texte }] };
     const historique = [...messages, messageUtilisateur];
@@ -326,10 +383,29 @@ export function ChatAssistant() {
 
           {/* Saisie */}
           <div className="border-t border-[var(--border)] p-3 flex items-end gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={toggleDictee}
+              disabled={busy}
+              aria-label={ecoute ? 'Arrêter la dictée vocale' : 'Dicter le message'}
+              aria-pressed={ecoute}
+              title={ecoute ? 'Arrêter la dictée' : 'Dicter le message'}
+              className={clsx(
+                'btn-icon disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 relative',
+                ecoute && 'text-white',
+              )}
+              style={ecoute ? { background: '#ff4444' } : { color: '#00d4ff' }}
+            >
+              {ecoute ? <MicOff size={18} /> : <Mic size={18} />}
+              {ecoute && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+              )}
+            </button>
             <textarea
-              className="form-input flex-1 resize-none text-sm py-2"
-              rows={1}
-              placeholder="Écrivez votre message…"
+              className="form-input flex-1 resize-none text-sm"
+              style={{ minHeight: '52px', paddingTop: '13px', paddingBottom: '13px' }}
+              rows={2}
+              placeholder={ecoute ? 'Je vous écoute…' : 'Écrivez votre message…'}
               value={input}
               disabled={busy}
               onChange={e => setInput(e.target.value)}
