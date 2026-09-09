@@ -30,6 +30,9 @@ const LABELS_OUTILS_DESTRUCTIFS: Record<string, string> = {
   suspendre_at: "Suspendre l'autorisation de travail",
   cloturer_at: "Clôturer l'autorisation de travail",
   supprimer_intervenant: "Supprimer l'intervenant",
+  supprimer_zone: 'Supprimer la zone',
+  rejeter_permis: 'Rejeter le permis',
+  modifier_roles_utilisateur: "Modifier les rôles de l'utilisateur",
 };
 
 function buildSystemPrompt(profile: { prenom: string; nom: string; roles: string[]; site_id: string } | null): string {
@@ -42,17 +45,21 @@ function buildSystemPrompt(profile: { prenom: string; nom: string; roles: string
     `Tu discutes actuellement avec ${identite}.`,
     '',
     "Tu peux consulter les indicateurs (KPI) des autorisations de travail (AT), et effectuer des actions de "
-      + 'consultation/création/mise à jour sur les AT et les référentiels (sites, zones, intervenants), via les outils '
-      + 'mis à ta disposition.',
+      + 'consultation/création/modification/suppression sur les AT, les permis, les audits, et les référentiels '
+      + '(sites, zones, intervenants, utilisateurs), via les outils mis à ta disposition — tu as une autorisation '
+      + "complète sur l'application, dans la limite du rôle réel de l'utilisateur (les policies de sécurité de la "
+      + 'base de données rejetteront toute action hors de son rôle, avec un message clair).',
     '',
     'Règles impératives :',
     "- Pour tout chiffre ou état des lieux, appelle l'outil get_kpis (ou lister_ats) plutôt que de réutiliser un "
       + 'chiffre déjà donné plus tôt dans la conversation : les données peuvent avoir changé.',
-    '- Suspendre une AT, clôturer une AT et supprimer un intervenant sont des actions destructives ou irréversibles. '
-      + "Le système affiche automatiquement à l'utilisateur une carte de confirmation avant toute exécution — tu ne "
-      + "peux pas contourner cette étape et tu ne dois jamais affirmer qu'une de ces actions est terminée tant que le "
-      + "résultat de l'outil ne le confirme pas. Annonce simplement à l'utilisateur qu'une confirmation lui sera "
-      + 'demandée.',
+    '- Certaines actions sont destructives ou irréversibles (suppression, clôture, suspension, rejet de permis, '
+      + "modification des rôles d'un autre utilisateur). Le système affiche automatiquement à l'utilisateur une carte "
+      + "de confirmation avant toute exécution de ces outils — tu ne peux pas contourner cette étape et tu ne dois "
+      + "jamais affirmer qu'une de ces actions est terminée tant que le résultat de l'outil ne le confirme pas. "
+      + "Annonce simplement à l'utilisateur qu'une confirmation lui sera demandée.",
+    "- Tu ne peux pas créer de nouveau compte utilisateur (les invitations se font uniquement depuis Supabase, en "
+      + 'dehors de cet assistant) — tu peux seulement modifier les rôles/statut de comptes déjà existants.',
     "- Si un outil renvoie une erreur, explique-la clairement en français, sans jargon technique inutile, et propose "
       + 'une alternative si possible.',
     '- Réponds toujours en français, de façon concise et professionnelle.',

@@ -5,20 +5,25 @@
 // action « sûre » (exécution immédiate) / « destructive » (confirmation UI
 // obligatoire avant exécution) : `OUTILS_DESTRUCTIFS`.
 //
-// Périmètre volontairement limité pour ce v1 (cf. rapport de livraison) :
-// pas de wrapper pour permisService, auditService, utilisateursService, ni
-// pour la suppression de site/zone — seuls les outils listés ci-dessous sont
-// exposés au modèle.
+// Périmètre étendu à « full autorisation » sur demande explicite de
+// l'utilisateur (2026-09) : couvre désormais l'ensemble des services
+// PTW (AT, permis, audits) et référentiels (sites, zones, intervenants,
+// utilisateurs). La distinction sûr/destructif reste la seule protection
+// contre une exécution accidentelle — la protection de fond reste les
+// policies RLS Supabase (un rôle sans droit reçoit une erreur claire).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import * as atService from '@/modules/ptw/services/atService';
+import * as permisService from '@/modules/ptw/services/permisService';
+import * as auditService from '@/modules/ptw/services/auditService';
 import * as sitesService from '@/modules/admin/services/sitesService';
 import * as zonesService from '@/modules/admin/services/zonesService';
 import * as intervenantsService from '@/modules/admin/services/intervenantsService';
+import * as utilisateursService from '@/modules/admin/services/utilisateursService';
 import { calculerKpis } from './services/kpiService';
 import {
-  RoleUtilisateur, StatutAT, TypeEcart, NiveauRisque,
-  type CreateATPayload, type ServiceResult,
+  RoleUtilisateur, StatutAT, TypeEcart, TypePermis, TypeAudit, ResultatAudit, NiveauRisque,
+  type CreateATPayload, type CreatePermisPayload, type CreateAuditPayload, type ServiceResult,
 } from '@/modules/ptw/types';
 import { pickRole } from '@/modules/ptw/utils/roles';
 
@@ -44,7 +49,10 @@ export interface ToolExecutionResult {
 // ailleurs dans le code.
 // ------------------------------------------------------------
 
-export const OUTILS_DESTRUCTIFS = ['suspendre_at', 'cloturer_at', 'supprimer_intervenant'] as const;
+export const OUTILS_DESTRUCTIFS = [
+  'suspendre_at', 'cloturer_at', 'supprimer_intervenant',
+  'supprimer_zone', 'rejeter_permis', 'modifier_roles_utilisateur',
+] as const;
 
 export function estOutilDestructif(nom: string): boolean {
   return (OUTILS_DESTRUCTIFS as readonly string[]).includes(nom);
@@ -274,6 +282,191 @@ export const TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'creer_zone',
+    description: "Crée une nouvelle zone sur le site de l'utilisateur (ex: atelier, entrepôt). Réservé ADMIN/HSE_MANAGER "
+      + "côté sécurité (RLS) — si l'utilisateur n'a pas ce rôle, l'outil renverra une erreur claire. Action non destructive.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        nom: { type: 'string' },
+        code_zone: { type: 'string', description: 'Code court unique sur le site, ex: Z-CHAUD-01.' },
+        description: { type: 'string' },
+        niveau_risque_defaut: { type: 'string', enum: Object.values(NiveauRisque) },
+        responsable_id: { type: 'string', description: "Optionnel — identifiant d'un utilisateur du site." },
+      },
+      required: ['nom', 'code_zone', 'niveau_risque_defaut'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'modifier_zone',
+    description: 'Modifie une zone existante (champs fournis uniquement). Action non destructive.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        nom: { type: 'string' },
+        code_zone: { type: 'string' },
+        description: { type: 'string' },
+        niveau_risque_defaut: { type: 'string', enum: Object.values(NiveauRisque) },
+        responsable_id: { type: 'string' },
+      },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'supprimer_zone',
+    description: "Supprime définitivement une zone. Action DESTRUCTIVE (irréversible) : nécessite une confirmation "
+      + "explicite de l'utilisateur.",
+    input_schema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'creer_site',
+    description: "Crée un nouveau site pour l'entreprise. Réservé ADMIN côté sécurité (RLS). Action non destructive.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        nom: { type: 'string' },
+        adresse: { type: 'string' },
+        code_site: { type: 'string', description: 'Identifiant court unique, ex: SITE-NORD-01.' },
+        actif: { type: 'boolean' },
+      },
+      required: ['nom', 'adresse', 'code_site'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'modifier_site',
+    description: 'Modifie un site existant (champs fournis uniquement). Réservé ADMIN côté sécurité (RLS). Action non destructive.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        nom: { type: 'string' },
+        adresse: { type: 'string' },
+        code_site: { type: 'string' },
+        actif: { type: 'boolean' },
+      },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'lister_utilisateurs',
+    description: "Liste les utilisateurs (comptes) du site de l'utilisateur connecté, avec leurs rôles.",
+    input_schema: {
+      type: 'object',
+      properties: { site_id: { type: 'string', description: "Optionnel — par défaut le site de l'utilisateur connecté." } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'modifier_roles_utilisateur',
+    description: "Change les rôles et/ou le statut actif/inactif d'un utilisateur existant. Ne crée jamais de nouveau "
+      + 'compte — les invitations se font uniquement depuis le tableau de bord Supabase, en dehors de cet assistant. '
+      + "Réservé ADMIN côté sécurité (RLS). Action DESTRUCTIVE (impact sur les droits d'accès d'autrui) : nécessite "
+      + "une confirmation explicite de l'utilisateur.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        roles: { type: 'array', items: { type: 'string', enum: Object.values(RoleUtilisateur) } },
+        actif: { type: 'boolean' },
+      },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'creer_permis',
+    description: "Ajoute un permis à une AT existante en statut BROUILLON ou SOUMISE (ex: travail en hauteur, espace "
+      + 'confiné...). Action non destructive.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        at_id: { type: 'string' },
+        type_permis: { type: 'string', enum: Object.values(TypePermis) },
+        mesures_prevention: { type: 'array', items: { type: 'string' } },
+        epi_requis: { type: 'array', items: { type: 'string' } },
+        equipements_concernes: { type: 'array', items: { type: 'string' } },
+        intervenants: {
+          type: 'array',
+          description: 'Liste des intervenants prévus sur ce permis.',
+          items: {
+            type: 'object',
+            properties: {
+              nom_complet: { type: 'string' },
+              entreprise: { type: 'string' },
+              habilitations: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['nom_complet'],
+          },
+        },
+      },
+      required: ['at_id', 'type_permis'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'valider_permis',
+    description: "Valide un permis en attente (terrain) — réservé Animateur de Sécurité/HSE Manager côté sécurité. "
+      + 'Action non destructive.',
+    input_schema: {
+      type: 'object',
+      properties: { permis_id: { type: 'string' }, commentaire_validation: { type: 'string' } },
+      required: ['permis_id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'rejeter_permis',
+    description: 'Rejette un permis en attente, avec motif obligatoire — bloque la validation de l\'AT tant qu\'un '
+      + "nouveau permis conforme n'est pas soumis. Action DESTRUCTIVE : nécessite une confirmation explicite de "
+      + "l'utilisateur.",
+    input_schema: {
+      type: 'object',
+      properties: { permis_id: { type: 'string' }, motif_rejet: { type: 'string' } },
+      required: ['permis_id', 'motif_rejet'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'cloturer_permis',
+    description: 'Clôture un permis validé (fin de travaux sur ce permis) et check-out tous ses intervenants encore '
+      + 'actifs. Action non destructive.',
+    input_schema: {
+      type: 'object',
+      properties: { permis_id: { type: 'string' } },
+      required: ['permis_id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'creer_audit',
+    description: "Crée un audit de conformité sur une AT ACTIVE, SUSPENDUE ou APPROUVÉE — réservé Animateur de "
+      + "Sécurité/HSE Manager. Un audit de type LEVEE_SUSPENSION est obligatoire avant de pouvoir lever une "
+      + "suspension (outil lever_suspension_at). Action non destructive.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        at_id: { type: 'string' },
+        type_audit: { type: 'string', enum: Object.values(TypeAudit) },
+        resultat: { type: 'string', enum: Object.values(ResultatAudit) },
+        ecarts_constates: { type: 'string' },
+        points_positifs: { type: 'string' },
+        recommandations: { type: 'string' },
+      },
+      required: ['at_id', 'type_audit', 'resultat'],
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 // ------------------------------------------------------------
@@ -288,6 +481,10 @@ const ROLES_APPROUVER = [RoleUtilisateur.RESP_ZONE, RoleUtilisateur.HSE_MANAGER,
 const ROLES_ACTIVER = [RoleUtilisateur.RESP_ZONE, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.ANIMATEUR_SECURITE];
 const ROLES_SUSPENDRE = [RoleUtilisateur.ANIMATEUR_SECURITE, RoleUtilisateur.HSE_MANAGER];
 const ROLES_CLOTURER = [RoleUtilisateur.ANIMATEUR_SECURITE, RoleUtilisateur.RESP_ZONE, RoleUtilisateur.HSE_MANAGER];
+const ROLES_CREER_PERMIS = [RoleUtilisateur.DEMANDEUR, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.ADMIN];
+const ROLES_VALIDER_PERMIS = [RoleUtilisateur.ANIMATEUR_SECURITE, RoleUtilisateur.HSE_MANAGER];
+const ROLES_CLOTURER_PERMIS = [RoleUtilisateur.ANIMATEUR_SECURITE, RoleUtilisateur.HSE_MANAGER, RoleUtilisateur.RESP_ZONE];
+const ROLES_CREER_AUDIT = [RoleUtilisateur.ANIMATEUR_SECURITE, RoleUtilisateur.HSE_MANAGER];
 
 function role(ctx: ToolContext, preferes: RoleUtilisateur[]): RoleUtilisateur | null {
   return pickRole(ctx.roles, preferes);
@@ -455,6 +652,125 @@ export async function executeTool(
 
       case 'supprimer_intervenant': {
         return depuisServiceResult(await intervenantsService.supprimerIntervenant(input.id as string));
+      }
+
+      case 'creer_zone': {
+        return depuisServiceResult(await zonesService.creerZone({
+          site_id: ctx.siteId,
+          nom: input.nom as string,
+          code_zone: input.code_zone as string,
+          description: input.description as string | undefined,
+          niveau_risque_defaut: input.niveau_risque_defaut as NiveauRisque,
+          responsable_id: input.responsable_id as string | undefined,
+        }));
+      }
+
+      case 'modifier_zone': {
+        return depuisServiceResult(await zonesService.modifierZone(input.id as string, {
+          nom: input.nom as string | undefined,
+          code_zone: input.code_zone as string | undefined,
+          description: input.description as string | undefined,
+          niveau_risque_defaut: input.niveau_risque_defaut as NiveauRisque | undefined,
+          responsable_id: input.responsable_id as string | undefined,
+        }));
+      }
+
+      case 'supprimer_zone': {
+        return depuisServiceResult(await zonesService.supprimerZone(input.id as string));
+      }
+
+      case 'creer_site': {
+        return depuisServiceResult(await sitesService.creerSite({
+          nom: input.nom as string,
+          adresse: input.adresse as string,
+          code_site: input.code_site as string,
+          actif: (input.actif as boolean | undefined) ?? true,
+        }));
+      }
+
+      case 'modifier_site': {
+        return depuisServiceResult(await sitesService.modifierSite(input.id as string, {
+          nom: input.nom as string | undefined,
+          adresse: input.adresse as string | undefined,
+          code_site: input.code_site as string | undefined,
+          actif: input.actif as boolean | undefined,
+        }));
+      }
+
+      case 'lister_utilisateurs': {
+        return depuisServiceResult(await utilisateursService.listerUtilisateurs((input.site_id as string) || ctx.siteId));
+      }
+
+      case 'modifier_roles_utilisateur': {
+        // UpdateUtilisateurRolesPayload exige roles ET actif : on complète avec les
+        // valeurs actuelles si l'un des deux champs n'a pas été fourni par le modèle.
+        const utilisateurs = await utilisateursService.listerUtilisateurs(ctx.siteId);
+        const existant = utilisateurs.data?.find(u => u.id === input.id);
+        if (!existant) return { content: 'Utilisateur introuvable sur ce site.', isError: true };
+        return depuisServiceResult(await utilisateursService.modifierRolesEtStatut(input.id as string, {
+          roles: (input.roles as RoleUtilisateur[] | undefined) ?? existant.roles,
+          actif: (input.actif as boolean | undefined) ?? existant.actif,
+        }));
+      }
+
+      case 'creer_permis': {
+        const r = role(ctx, ROLES_CREER_PERMIS);
+        if (!r) return erreurRole();
+        const payload: CreatePermisPayload = {
+          at_id: input.at_id as string,
+          type_permis: input.type_permis as TypePermis,
+          checklist_reponses: [],
+          mesures_prevention: (input.mesures_prevention as string[]) ?? [],
+          epi_requis: (input.epi_requis as string[]) ?? [],
+          equipements_concernes: (input.equipements_concernes as string[]) ?? [],
+          intervenants: (input.intervenants as CreatePermisPayload['intervenants']) ?? [],
+        };
+        return depuisServiceResult(await permisService.creerPermis(payload, ctx.userId, r));
+      }
+
+      case 'valider_permis': {
+        const r = role(ctx, ROLES_VALIDER_PERMIS);
+        if (!r) return erreurRole();
+        return depuisServiceResult(await permisService.validerPermis(
+          {
+            permis_id: input.permis_id as string,
+            commentaire_validation: input.commentaire_validation as string | undefined,
+          },
+          ctx.userId, r,
+        ));
+      }
+
+      case 'rejeter_permis': {
+        const r = role(ctx, ROLES_VALIDER_PERMIS);
+        if (!r) return erreurRole();
+        return depuisServiceResult(await permisService.rejeterPermis(
+          {
+            permis_id: input.permis_id as string,
+            motif_rejet: input.motif_rejet as string,
+          },
+          ctx.userId, r,
+        ));
+      }
+
+      case 'cloturer_permis': {
+        const r = role(ctx, ROLES_CLOTURER_PERMIS);
+        if (!r) return erreurRole();
+        return depuisServiceResult(await permisService.cloturerPermis(input.permis_id as string, ctx.userId, r));
+      }
+
+      case 'creer_audit': {
+        const r = role(ctx, ROLES_CREER_AUDIT);
+        if (!r) return erreurRole();
+        const payload: CreateAuditPayload = {
+          at_id: input.at_id as string,
+          type_audit: input.type_audit as TypeAudit,
+          checklist_audit: [],
+          resultat: input.resultat as ResultatAudit,
+          ecarts_constates: input.ecarts_constates as string | undefined,
+          points_positifs: input.points_positifs as string | undefined,
+          recommandations: input.recommandations as string | undefined,
+        };
+        return depuisServiceResult(await auditService.creerAudit(payload, ctx.userId, r));
       }
 
       default:
