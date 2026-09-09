@@ -14,6 +14,7 @@ import { LoginPage } from '@/components/auth/LoginPage';
 import { UpdatePasswordPage } from '@/components/auth/UpdatePasswordPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { RoleUtilisateur } from '@/modules/ptw/types';
+import { ChatAssistant } from '@/modules/assistant/components/ChatAssistant';
 
 // ── Modules chargés à la demande (code-splitting par route) ────────────────────
 // Chaque module HSE (PTW, audit, accidentologie, prestataires) est volumineux
@@ -338,6 +339,7 @@ const SIDEBAR_COLLAPSED_KEY = 'hse-sidebar-collapsed';
 
 function Layout() {
   const { pathname } = useLocation();
+  const { session } = useAuth();
   // Le wizard de création d'AT a son propre header + stepper immersif —
   // pas besoin (et pas de place) pour la sidebar principale à côté.
   const hideSidebar = pathname.startsWith('/permis/') || pathname === '/at/nouvelle';
@@ -428,6 +430,11 @@ function Layout() {
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      {/* Assistant HSE — widget flottant, visible sur toutes les pages
+          authentifiées (hors /login, /update-password, /permis/:token et le
+          wizard de création d'AT, gérés par la branche hideSidebar ci-dessus). */}
+      {session && <ChatAssistant />}
     </div>
   );
 }
