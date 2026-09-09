@@ -17,7 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
-import { MessageCircle, X, Send, AlertTriangle, Check, Ban } from 'lucide-react';
+import { HardHat, X, Send, AlertTriangle, Check, Ban } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -214,7 +214,7 @@ export function ChatAssistant() {
         )}
         style={{ background: 'linear-gradient(135deg, #00d4ff, #0077aa)', boxShadow: '0 4px 24px rgba(0,212,255,0.45)' }}
       >
-        {open ? <X size={22} className="text-[#02101f]" /> : <MessageCircle size={22} className="text-[#02101f]" />}
+        {open ? <X size={22} className="text-[#02101f]" /> : <HardHat size={22} className="text-[#02101f]" />}
       </button>
 
       {/* ── Panneau chat ── */}
@@ -224,7 +224,7 @@ export function ChatAssistant() {
           aria-label="Assistant HSE"
           className={clsx(
             'fixed z-[89] bottom-24 right-5 flex flex-col overflow-hidden',
-            'w-[calc(100vw-2.5rem)] max-w-[380px] h-[min(600px,calc(100vh-8rem))]',
+            'w-[calc(100vw-2.5rem)] max-w-[1140px] h-[min(600px,calc(100vh-8rem))]',
             'bg-[var(--bg-card)] backdrop-blur-[16px] border border-[var(--border-strong)] rounded-2xl shadow-2xl',
           )}
         >
@@ -233,7 +233,7 @@ export function ChatAssistant() {
                style={{ background: 'linear-gradient(135deg, rgba(0,212,255,0.14), rgba(0,119,170,0.08))' }}>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                  style={{ background: 'linear-gradient(135deg, #00d4ff, #0077aa)' }}>
-              <MessageCircle size={16} className="text-[#02101f]" />
+              <HardHat size={16} className="text-[#02101f]" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[color:var(--text-primary)] font-bold text-sm leading-none">Assistant HSE</p>
