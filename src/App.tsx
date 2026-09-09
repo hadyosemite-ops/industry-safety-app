@@ -115,7 +115,6 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Base de données',
         end: true,
         description: 'Sites, zones, intervenants',
-        roles: [RoleUtilisateur.ADMIN, RoleUtilisateur.HSE_MANAGER],
       },
     ],
   },
@@ -421,7 +420,7 @@ function Layout() {
               <Route
                 path="/base-donnees"
                 element={
-                  <ProtectedRoute roles={[RoleUtilisateur.ADMIN, RoleUtilisateur.HSE_MANAGER]}>
+                  <ProtectedRoute>
                     <DashboardAdmin />
                   </ProtectedRoute>
                 }
