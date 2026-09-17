@@ -189,7 +189,7 @@ export function FormulaireEvaluation({ prestataire, onClose, onSave }: Formulair
         </div>
 
         {/* Contenu scrollable */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-6 py-5 space-y-6">
 
             {/* Sélection prestataire */}

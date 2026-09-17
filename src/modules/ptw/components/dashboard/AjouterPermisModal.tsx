@@ -69,7 +69,7 @@ export function AjouterPermisModal({ numeroAt, onClose, onSave }: Props) {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {!permis ? (
               <div className="p-5">
                 <p className="font-semibold text-[color:var(--text-primary)] mb-4">Choisissez le type de permis</p>

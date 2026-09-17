@@ -206,7 +206,7 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
       </div>
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden no-scrollbar">
+      <nav className="flex-1 min-h-0 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden no-scrollbar">
         {groupesVisibles.map(group => (
           <div key={group.label}>
             {!collapsed && (

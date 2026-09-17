@@ -84,7 +84,7 @@ export function AuditModal({ at, onClose, onConfirmer }: Props) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-5">
 
           {/* Type audit */}
           <div>

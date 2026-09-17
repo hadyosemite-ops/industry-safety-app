@@ -270,7 +270,7 @@ function IntervenantModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-4">
             <FormField label="Nom complet" required error={erreurs.nomComplet}>
               <input
                 className={clsx('form-input', erreurs.nomComplet && 'form-input-error')}
