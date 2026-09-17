@@ -82,3 +82,16 @@ export interface UpdateUtilisateurRolesPayload {
   roles: RoleUtilisateur[];
   actif: boolean;
 }
+
+// ------------------------------------------------------------
+// DTO — Création d'un utilisateur (voir api/create-user.ts)
+// ------------------------------------------------------------
+
+export interface CreateUtilisateurPayload {
+  email: string;
+  password: string;
+  nom: string;
+  prenom: string;
+  /** Rôle initial transmis au trigger `handle_new_user` (migration 002). */
+  role: RoleUtilisateur;
+}

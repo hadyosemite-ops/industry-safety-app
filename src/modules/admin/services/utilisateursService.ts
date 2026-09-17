@@ -8,7 +8,7 @@
 
 import { supabase } from '@/lib/supabase';
 import type { Utilisateur, ServiceResult } from '../types';
-import type { UpdateUtilisateurRolesPayload } from '../types';
+import type { UpdateUtilisateurRolesPayload, CreateUtilisateurPayload } from '../types';
 
 /** Liste les utilisateurs d'un site */
 export async function listerUtilisateurs(siteId: string): Promise<ServiceResult<Utilisateur[]>> {
@@ -43,5 +43,33 @@ export async function modifierRolesEtStatut(
     return { data: data as Utilisateur };
   } catch (err) {
     return { error: { code: 'UPDATE_ERROR', message: (err as Error).message } };
+  }
+}
+
+/**
+ * Crée un nouvel utilisateur (compte auth + profil, via api/create-user.ts —
+ * réservé ADMIN, voir ce fichier pour le détail des vérifications).
+ * `accessToken` = session.access_token de l'admin appelant.
+ */
+export async function creerUtilisateur(
+  payload: CreateUtilisateurPayload,
+  accessToken: string,
+): Promise<ServiceResult<{ id: string; email: string }>> {
+  try {
+    const resp = await fetch('/api/create-user', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json();
+    if (!resp.ok) {
+      return { error: { code: 'CREATE_ERROR', message: json?.error ?? 'Échec de la création du compte.' } };
+    }
+    return { data: json.data as { id: string; email: string } };
+  } catch (err) {
+    return { error: { code: 'CREATE_ERROR', message: (err as Error).message } };
   }
 }
