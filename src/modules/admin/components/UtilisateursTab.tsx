@@ -14,7 +14,6 @@ import { clsx } from 'clsx';
 import type { UtilisateurProfile } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/ToastProvider';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { FormField } from '@/components/ui/FormField';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import * as utilisateursService from '../services/utilisateursService';
 import { RoleUtilisateur } from '../types';
@@ -100,7 +99,6 @@ export function UtilisateursTab({ profile }: Props) {
               <tr>
                 <th className="text-left px-3 py-2.5 text-[color:var(--text-muted)] font-semibold">Nom</th>
                 <th className="text-left px-3 py-2.5 text-[color:var(--text-muted)] font-semibold">Email</th>
-                <th className="text-left px-3 py-2.5 text-[color:var(--text-muted)] font-semibold">Nom d'utilisateur</th>
                 <th className="text-left px-3 py-2.5 text-[color:var(--text-muted)] font-semibold">Rôles</th>
                 <th className="text-left px-3 py-2.5 text-[color:var(--text-muted)] font-semibold w-20">Statut</th>
                 {isAdmin && <th className="text-right px-3 py-2.5 text-[color:var(--text-muted)] font-semibold w-16">Actions</th>}
@@ -108,15 +106,12 @@ export function UtilisateursTab({ profile }: Props) {
             </thead>
             <tbody className="divide-y divide-[color:var(--border)]">
               {loading ? (
-                <tr><td colSpan={isAdmin ? 6 : 5} className="px-3 py-6 text-center text-[color:var(--text-muted)]">Chargement…</td></tr>
+                <tr><td colSpan={isAdmin ? 5 : 4} className="px-3 py-6 text-center text-[color:var(--text-muted)]">Chargement…</td></tr>
               ) : (
                 utilisateurs.map(u => (
                   <tr key={u.id} className="hover:bg-[var(--bg-hover)]">
                     <td className="px-3 py-2.5 font-medium text-[color:var(--text-primary)]">{u.prenom} {u.nom}</td>
                     <td className="px-3 py-2.5 text-[color:var(--text-secondary)]">{u.email}</td>
-                    <td className="px-3 py-2.5 text-[color:var(--text-secondary)]">
-                      {u.username ?? <span className="italic text-[color:var(--text-muted)]">non défini</span>}
-                    </td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1">
                         {u.roles.map(r => (
@@ -172,7 +167,6 @@ function UtilisateurRolesModal({
 }) {
   const [roles, setRoles] = useState<RoleUtilisateur[]>(utilisateur.roles);
   const [actif, setActif] = useState(utilisateur.actif);
-  const [username, setUsername] = useState(utilisateur.username ?? '');
   const [erreur, setErreur] = useState('');
   const [pending, setPending] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -189,7 +183,7 @@ function UtilisateurRolesModal({
 
     setPending(true);
     try {
-      await onSave({ roles, actif, username });
+      await onSave({ roles, actif });
     } finally {
       setPending(false);
     }
@@ -221,17 +215,6 @@ function UtilisateurRolesModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-            <FormField label="Nom d'utilisateur" hint="Utilisé pour se connecter à la place de l'email. Laisser vide pour désactiver la connexion par nom d'utilisateur.">
-              <input
-                type="text"
-                className="form-input"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                placeholder="ex : jdupont"
-                autoComplete="off"
-              />
-            </FormField>
-
             <div>
               <label className="form-label">
                 Rôles <span className="text-red-500" aria-hidden="true">*</span>

@@ -12,7 +12,7 @@ import { FormField } from '@/components/ui/FormField';
 export function LoginPage() {
   const { session, signIn, resetPassword } = useAuth();
   const location = useLocation();
-  const [identifiant, setIdentifiant] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -28,7 +28,7 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
     setPending(true);
-    const { error: err } = await signIn(identifiant, password);
+    const { error: err } = await signIn(email, password);
     setPending(false);
     if (err) setError(err);
   }
@@ -37,7 +37,7 @@ export function LoginPage() {
     e.preventDefault();
     setError(null);
     setPending(true);
-    const { error: err } = await resetPassword(identifiant);
+    const { error: err } = await resetPassword(email);
     setPending(false);
     if (err) setError(err);
     else setResetSent(true);
@@ -66,15 +66,15 @@ export function LoginPage() {
             className="rounded-2xl p-6 space-y-4"
             style={{ background: 'rgba(13,27,46,.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)' }}
           >
-            <FormField label="Nom d'utilisateur" required>
+            <FormField label="Email" required>
               <input
-                type="text"
-                autoComplete="username"
+                type="email"
+                autoComplete="email"
                 required
-                value={identifiant}
-                onChange={e => setIdentifiant(e.target.value)}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 className="form-input"
-                placeholder="ex : jdupont"
+                placeholder="prenom.nom@entreprise.com"
               />
             </FormField>
 
@@ -115,19 +115,19 @@ export function LoginPage() {
           >
             {resetSent ? (
               <p className="text-sm text-white/70 text-center py-2">
-                Si ce nom d'utilisateur existe, un lien de réinitialisation vient d'être envoyé à l'adresse email associée. Vérifiez votre boîte mail (et les spams).
+                Si un compte existe pour cet email, un lien de réinitialisation vient d'être envoyé. Vérifiez votre boîte mail (et les spams).
               </p>
             ) : (
               <>
-                <FormField label="Nom d'utilisateur" required hint="On envoie un lien à l'adresse email associée à ce compte.">
+                <FormField label="Email" required hint="On t'envoie un lien pour définir un nouveau mot de passe.">
                   <input
-                    type="text"
-                    autoComplete="username"
+                    type="email"
+                    autoComplete="email"
                     required
-                    value={identifiant}
-                    onChange={e => setIdentifiant(e.target.value)}
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
                     className="form-input"
-                    placeholder="ex : jdupont"
+                    placeholder="prenom.nom@entreprise.com"
                   />
                 </FormField>
 

@@ -15,7 +15,7 @@ export async function listerUtilisateurs(siteId: string): Promise<ServiceResult<
   try {
     const { data, error } = await supabase
       .from('utilisateurs')
-      .select('id, email, username, nom, prenom, roles, site_id, habilitations, telephone, actif, created_at')
+      .select('id, email, nom, prenom, roles, site_id, habilitations, telephone, actif, created_at')
       .eq('site_id', siteId)
       .order('nom', { ascending: true });
 
@@ -34,11 +34,7 @@ export async function modifierRolesEtStatut(
   try {
     const { data, error } = await supabase
       .from('utilisateurs')
-      .update({
-        roles: payload.roles,
-        actif: payload.actif,
-        ...(payload.username !== undefined ? { username: payload.username?.trim() || null } : {}),
-      })
+      .update({ roles: payload.roles, actif: payload.actif })
       .eq('id', id)
       .select()
       .single();
