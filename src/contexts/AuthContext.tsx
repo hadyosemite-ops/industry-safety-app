@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 export interface UtilisateurProfile {
   id: string;
   email: string;
+  username?: string;
   nom: string;
   prenom: string;
   roles: string[];
@@ -27,9 +28,11 @@ interface AuthApi {
   loading: boolean;
   /** true une fois la session ET (si connecté) le profil chargés */
   ready: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  /** `identifiant` = nom d'utilisateur (voir migration 005 — résolu en email côté serveur avant connexion). */
+  signIn: (identifiant: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: string | null }>;
+  /** `identifiant` = nom d'utilisateur. */
+  resetPassword: (identifiant: string) => Promise<{ error: string | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
 }
 
@@ -45,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileLoading(true);
     const { data } = await supabase
       .from('utilisateurs')
-      .select('id, email, nom, prenom, roles, site_id, actif')
+      .select('id, email, username, nom, prenom, roles, site_id, actif')
       .eq('id', userId)
       .single();
     setProfile((data as UtilisateurProfile) ?? null);
@@ -71,7 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function signIn(email: string, password: string) {
+  async function signIn(identifiant: string, password: string) {
+    const email = await resoudreEmail(identifiant);
+    if (!email) {
+      // Message générique — ne pas révéler si c'est le nom d'utilisateur qui est inconnu.
+      return { error: 'Nom d\'utilisateur ou mot de passe incorrect.' };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: traduireErreurAuth(error.message) };
     return { error: null };
@@ -81,7 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }
 
-  async function resetPassword(email: string) {
+  async function resetPassword(identifiant: string) {
+    const email = await resoudreEmail(identifiant);
+    if (!email) {
+      // Toujours renvoyer un succès silencieux — évite de révéler quels noms
+      // d'utilisateur existent (l'écran affiche le même message dans les deux cas).
+      return { error: null };
+    }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/update-password`,
     });
@@ -118,8 +132,19 @@ export function useAuth(): AuthApi {
   return ctx;
 }
 
+/**
+ * Résout un nom d'utilisateur en email via la fonction RPC `username_to_email`
+ * (migration 005) — appelable sans authentification (rôle anon), nécessaire
+ * puisque l'utilisateur n'est pas encore connecté à ce stade.
+ */
+async function resoudreEmail(identifiant: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('username_to_email', { p_username: identifiant.trim() });
+  if (error) return null;
+  return (data as string | null) ?? null;
+}
+
 function traduireErreurAuth(message: string): string {
-  if (message.includes('Invalid login credentials')) return 'Email ou mot de passe incorrect.';
+  if (message.includes('Invalid login credentials')) return 'Nom d\'utilisateur ou mot de passe incorrect.';
   if (message.includes('Email not confirmed')) return 'Compte non confirmé — vérifiez votre email.';
   if (message.includes('rate limit')) return 'Trop de tentatives d\'envoi d\'email — réessayez dans quelques minutes.';
   if (message.includes('Password should be at least')) return 'Le mot de passe doit contenir au moins 6 caractères.';

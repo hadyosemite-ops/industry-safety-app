@@ -83,6 +83,7 @@ export enum TypeEcart {
 export interface Utilisateur {
   id: string;
   email: string;
+  username?: string;             // alias de connexion — voir migration 005
   nom: string;
   prenom: string;
   roles: RoleUtilisateur[];

@@ -81,4 +81,5 @@ export type UpdateZonePayload = Partial<Omit<CreateZonePayload, 'site_id'>>;
 export interface UpdateUtilisateurRolesPayload {
   roles: RoleUtilisateur[];
   actif: boolean;
+  username?: string | null;
 }
