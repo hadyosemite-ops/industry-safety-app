@@ -7,14 +7,14 @@ import { useRef, useState, useMemo } from 'react';
 import {
   ShieldCheck, CheckCircle2, Activity, AlertTriangle, Clock,
   CircleDot, ChevronRight, Users, PauseCircle, Plus, X,
-  BarChart3,
+  BarChart3, ClipboardList,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import type { ATView } from '../../types/dashboardView';
-import { StatutAT } from '../../types';
+import { StatutAT, StatutPermis } from '../../types';
 import { DashboardAnimateur } from './DashboardAnimateur';
 import { DashboardRespZone } from './DashboardRespZone';
 import { BadgeStatutAT, BadgeRisque } from './DashboardAnimateur';
@@ -22,6 +22,7 @@ import { KanbanView, ATDetailModal } from './KanbanView';
 import { ModuleHeader } from '@/components/ui/ModuleHeader';
 import { KpiCard, KpiGrid } from '@/components/ui/KpiCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Avatar } from '@/components/ui/Avatar';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { AUDITS_DEMO } from '@/modules/audit/data/demo.data';
 import { useATDashboardData } from '../../hooks/useATDashboardData';
@@ -505,6 +506,120 @@ function EcartsAudit() {
   );
 }
 
+// ── Taux de conformité (ring SVG) ──────────────────────────────────────────────
+
+function ComplianceRingCard({ ats }: { ats: ATView[] }) {
+  const { taux, valides, total } = useMemo(() => {
+    const permis  = ats.flatMap(a => a.permis);
+    const valides = permis.filter(p => p.statut === StatutPermis.VALIDE).length;
+    const total   = permis.length;
+    return { taux: total > 0 ? Math.round((valides / total) * 100) : 0, valides, total };
+  }, [ats]);
+
+  const color   = taux >= 90 ? '#00e676' : taux >= 70 ? '#ffb300' : '#ff4444';
+  const R       = 20;
+  const CIRC    = 2 * Math.PI * R;
+  const dashLen = (taux / 100) * CIRC;
+
+  return (
+    <div className="card p-5 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium text-[color:var(--text-secondary)] leading-tight">Taux de conformité</p>
+        <div className="w-9 h-9 rounded-lg border flex items-center justify-center flex-shrink-0 bg-[rgba(0,230,118,0.10)] border-[rgba(0,230,118,0.25)]">
+          <ShieldCheck size={17} className="text-[color:var(--badge-success-text)]" strokeWidth={1.75} />
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className="text-3xl font-bold tracking-tight font-tight text-[color:var(--text-primary)]">{taux}%</span>
+          <p className="text-xs text-[color:var(--text-muted)] mt-1 truncate">
+            {total > 0 ? `${valides}/${total} permis validés` : 'Aucun permis'}
+          </p>
+        </div>
+        <svg width={48} height={48} viewBox="0 0 48 48" className="flex-shrink-0">
+          <circle cx={24} cy={24} r={R} fill="none" className="stroke-[var(--bg-hover)]" strokeWidth={5} />
+          <circle
+            cx={24} cy={24} r={R} fill="none" stroke={color} strokeWidth={5}
+            strokeDasharray={`${dashLen} ${CIRC}`} strokeLinecap="round"
+            transform="rotate(-90 24 24)"
+            style={{ transition: 'stroke-dasharray 0.5s ease' }}
+          />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ── Autorisations récentes (table avatars + progression) ──────────────────────
+
+function AutorisationsRecentes({ ats, actions }: { ats: ATView[]; actions: PTWActions }) {
+  const [selected, setSelected] = useState<ATView | null>(null);
+
+  const recentes = useMemo(() =>
+    [...ats]
+      .sort((a, b) => b.date_debut_prevue.localeCompare(a.date_debut_prevue))
+      .slice(0, 6),
+    [ats],
+  );
+
+  if (recentes.length === 0) return null;
+
+  return (
+    <>
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-faint)]">
+          <p className="section-title flex items-center gap-2">
+            <ClipboardList size={12} />
+            Autorisations récentes
+          </p>
+          <span className="text-[10px] text-[color:var(--text-muted)]">{recentes.length} dernières</span>
+        </div>
+
+        <div className="divide-y divide-[var(--border-faint)]">
+          {recentes.map(at => {
+            const totalPermis  = at.permis.length;
+            const validesCount = at.permis.filter(p => p.statut === StatutPermis.VALIDE).length;
+            const pct = totalPermis > 0 ? Math.round((validesCount / totalPermis) * 100) : 0;
+
+            return (
+              <button
+                key={at.id}
+                type="button"
+                onClick={() => setSelected(at)}
+                className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[var(--bg-hover)] transition-colors text-left"
+              >
+                <Avatar name={at.demandeur_nom} size="md" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] text-[color:var(--text-muted)] font-mono">{at.numero_at}</span>
+                    <BadgeStatutAT statut={at.statut} />
+                  </div>
+                  <p className="text-sm font-semibold text-[color:var(--text-primary)] truncate leading-snug">{at.demandeur_nom}</p>
+                  <p className="text-xs text-[color:var(--text-muted)] truncate mt-0.5">{at.titre} · {at.zone}</p>
+                </div>
+                <div className="hidden sm:flex flex-col items-end gap-1 w-28 flex-shrink-0">
+                  <span className="text-[10px] text-[color:var(--text-muted)]">
+                    {totalPermis > 0 ? `${validesCount}/${totalPermis} permis` : '—'}
+                  </span>
+                  <div className="w-full h-1.5 rounded-full bg-[var(--bg-hover)] overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #00d4ff, #8b7bff)' }}
+                    />
+                  </div>
+                </div>
+                <ChevronRight size={14} className="text-[color:var(--text-muted)] flex-shrink-0" />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {selected && <ATDetailModal at={selected} onClose={() => setSelected(null)} actions={actions} />}
+    </>
+  );
+}
+
 // ── Vue générale ──────────────────────────────────────────────────────────────
 
 function VueGenerale({ ats, loading, error, actions }: { ats: ATView[]; loading: boolean; error: string | null; actions: PTWActions }) {
@@ -553,7 +668,7 @@ function VueGenerale({ ats, loading, error, actions }: { ats: ATView[]; loading:
     <div className="space-y-5">
 
       {/* KPIs — cliquer pour voir les AT concernées */}
-      <KpiGrid cols={3}>
+      <KpiGrid cols={4}>
         <KpiCard
           icon={ShieldCheck} label="AT totales"        color="navy"
           value={kpis.total} sub="sur le site" loading={loading}
@@ -584,7 +699,11 @@ function VueGenerale({ ats, loading, error, actions }: { ats: ATView[]; loading:
           value={kpis.intervenants} sub="toutes AT confondues" loading={loading}
           onClick={() => setListeFiltre({ title: 'AT avec intervenants recensés', ats: listes.total })}
         />
+        <ComplianceRingCard ats={ats} />
       </KpiGrid>
+
+      {/* Autorisations récentes */}
+      <AutorisationsRecentes ats={ats} actions={actions} />
 
       {/* Courbes d'évolution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

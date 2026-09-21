@@ -52,7 +52,7 @@ const PALETTE: Record<KpiColor, {
 
 function KpiCardSkeleton() {
   return (
-    <div className="card shadow-card p-5 space-y-3">
+    <div className="card p-5 space-y-3">
       <div className="flex items-center justify-between">
         <div className="skeleton h-3 w-24 rounded" />
         <div className="skeleton h-9 w-9 rounded-lg" />
@@ -82,11 +82,11 @@ export function KpiCard({
     <div
       onClick={onClick}
       className={clsx(
-        'shadow-card p-5 flex flex-col gap-3',
+        'p-5 flex flex-col gap-3',
         'transition-all duration-200',
         pal.bg,
         onClick
-          ? 'cursor-pointer hover:shadow-card-hover hover:-translate-y-0.5 active:translate-y-0'
+          ? 'cursor-pointer hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 active:translate-y-0'
           : '',
         className,
       )}

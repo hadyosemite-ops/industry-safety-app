@@ -254,7 +254,7 @@ export function ATCreationWizard() {
   if (soumis && atCreee) {
     return (
       <div className="min-h-screen bg-[#020817] flex items-center justify-center p-6">
-        <div className="card shadow-panel p-10 max-w-md w-full text-center animate-fade-in-up">
+        <div className="card p-10 max-w-md w-full text-center animate-fade-in-up">
           <div className="w-16 h-16 bg-safety-50 rounded-full flex items-center justify-center mx-auto mb-5">
             <CheckSquare size={32} className="text-safety-500" />
           </div>

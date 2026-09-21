@@ -1,13 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import {
   Shield, AlertTriangle, ClipboardCheck, Building2, Database,
-  ChevronRight, ChevronLeft, Menu, X, Sun, Moon, LogOut,
+  ChevronRight, ChevronLeft, Menu, X, Sun, Moon, LogOut, Search,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useState, type ElementType } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ElementType } from 'react';
 import { clsx } from 'clsx';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { ToastProvider } from '@/components/ui/ToastProvider';
+import { Avatar } from '@/components/ui/Avatar';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { LoginPage } from '@/components/auth/LoginPage';
@@ -132,24 +133,46 @@ interface SidebarProps {
 function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
   const { profile, signOut } = useAuth();
-  const initiales = profile
-    ? `${profile.prenom.charAt(0)}${profile.nom.charAt(0)}`.toUpperCase()
-    : '··';
   const nomComplet = profile ? `${profile.prenom} ${profile.nom.charAt(0)}.` : 'Chargement…';
   const roleLabel = profile?.roles?.[0]?.replace(/_/g, ' ') ?? '';
+
+  // ── Recherche rapide (⌘K) ────────────────────────────────────────────────
+  const [recherche, setRecherche] = useState('');
+  const rechercheRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        rechercheRef.current?.focus();
+      }
+      if (e.key === 'Escape' && document.activeElement === rechercheRef.current) {
+        setRecherche('');
+        rechercheRef.current?.blur();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   // Filtre les entrées de navigation dont l'accès est restreint à certains
   // rôles (ex. "Base de données" → ADMIN/HSE_MANAGER) puis retire les groupes
   // qui se retrouveraient vides. Tant que le profil n'est pas encore chargé,
   // les entrées restreintes restent masquées par défaut (fail-closed).
-  const groupesVisibles = NAV_GROUPS
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item =>
-        !item.roles || item.roles.some(r => profile?.roles?.includes(r)),
-      ),
-    }))
-    .filter(group => group.items.length > 0);
+  const groupesVisibles = useMemo(() => {
+    const q = recherche.trim().toLowerCase();
+    return NAV_GROUPS
+      .map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          (!item.roles || item.roles.some(r => profile?.roles?.includes(r))) &&
+          (q === '' || item.label.toLowerCase().includes(q) || item.description?.toLowerCase().includes(q)),
+        ),
+      }))
+      .filter(group => group.items.length > 0);
+  }, [profile, recherche]);
+
+  const aucunResultat = recherche.trim() !== '' && groupesVisibles.length === 0;
 
   return (
     <aside
@@ -205,8 +228,43 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
         </div>
       </div>
 
+      {/* ── Recherche rapide ── */}
+      {!collapsed && (
+        <div className="px-3 pt-3">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.08] focus-within:border-[rgba(0,212,255,0.4)] focus-within:bg-white/[0.08] transition-colors">
+            <Search size={13} className="text-white/35 flex-shrink-0" aria-hidden="true" />
+            <input
+              ref={rechercheRef}
+              type="text"
+              value={recherche}
+              onChange={e => setRecherche(e.target.value)}
+              placeholder="Rechercher..."
+              aria-label="Rechercher dans la navigation"
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-xs text-white placeholder:text-white/30"
+            />
+            {recherche === '' ? (
+              <kbd className="hidden sm:inline-block text-[9px] font-semibold text-white/30 bg-white/[0.06] border border-white/[0.10] rounded px-1.5 py-0.5 flex-shrink-0">
+                ⌘K
+              </kbd>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setRecherche('')}
+                aria-label="Effacer la recherche"
+                className="text-white/30 hover:text-white transition-colors flex-shrink-0"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Navigation ── */}
       <nav className="flex-1 min-h-0 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden no-scrollbar">
+        {aucunResultat && (
+          <p className="px-3 py-4 text-xs text-white/30 text-center italic">Aucun résultat pour « {recherche} »</p>
+        )}
         {groupesVisibles.map(group => (
           <div key={group.label}>
             {!collapsed && (
@@ -305,9 +363,7 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
           'mt-2 pt-3 border-t border-white/[0.08] flex items-center gap-3',
           collapsed ? 'justify-center' : 'px-1',
         )}>
-          <div className="w-8 h-8 rounded-xl bg-[rgba(0,212,255,0.14)] border border-[rgba(0,212,255,0.3)] flex items-center justify-center flex-shrink-0">
-            <span className="text-[#4de6ff] text-xs font-bold">{initiales}</span>
-          </div>
+          <Avatar name={profile ? `${profile.prenom} ${profile.nom}` : '··'} size="md" className="rounded-xl" />
           {!collapsed && (
             <>
               <div className="min-w-0 flex-1">

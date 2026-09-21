@@ -61,7 +61,7 @@ export const KanbanCard = memo(function KanbanCard({ at, isDragging, onDragStart
         'card overflow-hidden select-none transition-all duration-150',
         'cursor-pointer',
         canDrag     ? 'active:cursor-grabbing' : '',
-        isDragging  ? 'opacity-40 scale-95 shadow-none' : 'hover:shadow-card-hover hover:-translate-y-0.5 hover:border-navy-200',
+        isDragging  ? 'opacity-40 scale-95 shadow-none' : 'hover:shadow-[var(--shadow-elevated)] hover:-translate-y-0.5 hover:border-navy-200',
       )}
     >
       {/* Barre risque top */}
