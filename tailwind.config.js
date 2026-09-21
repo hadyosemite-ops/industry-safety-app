@@ -108,6 +108,19 @@ export default {
           500: '#ffb300',
           600: '#e6a100',
         },
+
+        // Accent secondaire — violet, pour aérer le tout-cyan (bento cards,
+        // highlights, statut "soumis"). Ajouté lors de la refonte visuelle
+        // 2026 — n'affecte rien d'existant, disponible en bg-violet-*/text-violet-*.
+        violet: {
+          50:  'rgba(139,123,255,0.10)',
+          100: 'rgba(139,123,255,0.16)',
+          200: 'rgba(139,123,255,0.32)',
+          400: '#a394ff',
+          500: '#8b7bff',
+          600: '#6d5bd0',
+          700: '#c4b5fd',   // texte violet lisible sur fond sombre
+        },
       },
 
       // ── Ombres — glows & profondeur "cockpit sombre" ─────────────────────────────

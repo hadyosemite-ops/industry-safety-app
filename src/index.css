@@ -11,9 +11,15 @@
   :root {
     --color-brand:    #00d4ff;
     --color-accent:   #00d4ff;
+    --color-accent-2: #8b7bff;
     --sidebar-width:  240px;
     --header-height:  60px;
     --radius-card:    16px;
+
+    /* Ombres — profondeur "cockpit sombre" (ajouté 2026, refonte visuelle) */
+    --shadow-card:     0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px -28px rgba(0,0,0,0.65);
+    --shadow-elevated: 0 1px 0 rgba(255,255,255,0.04) inset, 0 28px 60px -24px rgba(0,0,0,0.7);
+    --shadow-modal:    0 24px 60px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.05) inset;
 
     /* Tokens FleetOS — repris pour dégradés / effets non exprimables en Tailwind pur */
     --bg-app:         #020817;
@@ -60,6 +66,11 @@
      Note : la sidebar reste volontairement sombre dans les deux thèmes
      (identité visuelle "cockpit"), --bg-sidebar n'est donc pas redéfini ici. ── */
   [data-theme="light"] {
+    --color-accent-2: #6d5bd0;
+    --shadow-card:     0 1px 0 rgba(255,255,255,0.6) inset, 0 14px 32px -20px rgba(15,35,60,0.20);
+    --shadow-elevated: 0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 50px -20px rgba(15,35,60,0.25);
+    --shadow-modal:    0 24px 50px -18px rgba(15,35,60,0.30), 0 1px 0 rgba(255,255,255,0.7) inset;
+
     --bg-app:         #f3f6fa;
     --bg-header:      rgba(255,255,255,0.9);
     --bg-card:        rgba(255,255,255,0.9);
@@ -104,6 +115,10 @@
      réservé à PermisQRPage (page terrain via QR code, sans accès au toggle,
      pensée pour rester sombre : lisibilité extérieure, économie batterie). */
   .theme-force-dark {
+    --shadow-card:     0 1px 0 rgba(255,255,255,0.03) inset, 0 20px 40px -28px rgba(0,0,0,0.65);
+    --shadow-elevated: 0 1px 0 rgba(255,255,255,0.04) inset, 0 28px 60px -24px rgba(0,0,0,0.7);
+    --shadow-modal:    0 24px 60px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.05) inset;
+
     --bg-app:         #020817;
     --bg-header:      rgba(5,14,31,0.9);
     --bg-card:        rgba(13,27,46,0.85);
@@ -178,17 +193,18 @@
 
   .btn {
     @apply inline-flex items-center gap-2 font-semibold transition-all duration-150
-           rounded-lg select-none whitespace-nowrap
+           rounded-xl select-none whitespace-nowrap
            disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
   }
 
   .btn-primary {
-    @apply btn text-sm px-4 py-2 shadow-sm active:scale-[0.98];
+    @apply btn text-sm px-4 py-2 active:scale-[0.98];
     background: linear-gradient(135deg, #00d4ff, #0077aa);
     color: #02101f;
+    box-shadow: 0 0 0 1px rgba(0,212,255,0.25), 0 8px 20px -8px rgba(0,212,255,0.45);
   }
-  .btn-primary:hover  { filter: brightness(1.08); }
-  .btn-primary:active { filter: brightness(0.96); }
+  .btn-primary:hover  { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-primary:active { filter: brightness(0.96); transform: translateY(0); }
 
   .btn-secondary {
     @apply btn text-sm px-4 py-2 active:scale-[0.98];
@@ -196,8 +212,8 @@
     background: var(--bg-elevated);
     border: 1px solid var(--border);
   }
-  .btn-secondary:hover  { background: rgba(0,212,255,0.06); border-color: var(--border-strong); color: var(--text-primary); }
-  .btn-secondary:active { filter: brightness(0.95); }
+  .btn-secondary:hover  { background: rgba(0,212,255,0.06); border-color: var(--border-strong); color: var(--text-primary); transform: translateY(-1px); }
+  .btn-secondary:active { filter: brightness(0.95); transform: translateY(0); }
 
   .btn-danger {
     @apply btn text-sm px-4 py-2 text-white shadow-sm active:scale-[0.98];
@@ -239,7 +255,7 @@
   }
 
   .form-input {
-    @apply w-full px-3 py-2.5 text-sm rounded-lg
+    @apply w-full px-3 py-2.5 text-sm rounded-xl
            placeholder:text-transparent
            focus:outline-none focus:ring-2 focus:border-transparent
            transition-all duration-150;
@@ -278,13 +294,14 @@
     backdrop-filter: var(--card-backdrop);
     -webkit-backdrop-filter: var(--card-backdrop);
     border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-card);
   }
 
   .card-hover {
     @apply card transition-all duration-200 cursor-pointer;
   }
   .card-hover:hover {
-    box-shadow: 0 8px 28px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,212,255,0.10);
+    box-shadow: var(--shadow-elevated), 0 0 0 1px rgba(0,212,255,0.10);
     border-color: rgba(0,212,255,0.25);
     @apply -translate-y-0.5;
   }
@@ -297,6 +314,18 @@
            text-xs font-semibold border whitespace-nowrap;
   }
 
+  /* Pastille de statut — ajoutée automatiquement devant le texte, sans
+     changer le JSX existant (chaque badge reste `<span className="badge-*">texte</span>`). */
+  .badge::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.85;
+    flex-shrink: 0;
+  }
+
   .badge-dot { @apply w-1.5 h-1.5 rounded-full flex-shrink-0; }
 
   /* Variants — pastilles translucides "glass" */
@@ -306,6 +335,7 @@
   .badge-amber   { @apply badge; background: rgba(255,179,0,0.10); color: var(--badge-amber-text); border-color: rgba(255,179,0,0.3); }
   .badge-safety  { @apply badge; background: rgba(255,140,66,0.10); color: var(--badge-safety-text); border-color: rgba(255,140,66,0.3); }
   .badge-neutral { @apply badge; background: var(--bg-elevated); color: var(--text-secondary); border-color: var(--border); }
+  .badge-violet  { @apply badge; background: rgba(139,123,255,0.10); color: var(--badge-purple-text); border-color: rgba(139,123,255,0.3); }
 
   /* ── Section title ───────────────────────────────────────────────────── */
 
@@ -369,7 +399,7 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border-strong);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.30);
+    box-shadow: var(--shadow-modal);
     animation: fadeInScale 0.2s ease-out;
   }
 
