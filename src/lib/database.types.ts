@@ -174,6 +174,78 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['intervenants_permis']['Row'], 'id'>;
         Update: Partial<Database['public']['Tables']['intervenants_permis']['Insert']>;
       };
+      risques_industriels: {
+        Row: {
+          id: string;
+          numero: string;
+          site_id: string;
+          zone_id: string | null;
+          phase: string;
+          activite: string;
+          danger: string;
+          situation_dangereuse: string;
+          evenement_redoute: string;
+          consequence_potentielle: string;
+          frequence_initiale: number;
+          gravite_initiale: number;
+          score_initial: number;
+          niveau_initial: string;
+          moyens_protection: Json;
+          frequence_residuelle: number | null;
+          gravite_residuelle: number | null;
+          score_residuel: number | null;
+          niveau_residuel: string | null;
+          justification_alarp: string | null;
+          statut: string;
+          responsable_id: string | null;
+          date_identification: string;
+          date_derniere_cotation: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['risques_industriels']['Row'],
+          'id' | 'numero' | 'score_initial' | 'niveau_initial' | 'score_residuel' | 'niveau_residuel' | 'date_derniere_cotation' | 'created_at' | 'updated_at'
+        > & { numero?: string };
+        Update: Partial<Database['public']['Tables']['risques_industriels']['Insert']>;
+      };
+      cotations_risques: {
+        Row: {
+          id: string;
+          risque_id: string;
+          type: string;
+          frequence: number;
+          gravite: number;
+          score: number;
+          niveau: string;
+          auteur_id: string | null;
+          commentaire: string | null;
+          date: string;
+        };
+        Insert: Omit<Database['public']['Tables']['cotations_risques']['Row'], 'id' | 'score' | 'niveau'>;
+        Update: never; // Immuable
+      };
+      actions_risques: {
+        Row: {
+          id: string;
+          risque_id: string;
+          description: string;
+          type_mesure: string;
+          responsable_id: string | null;
+          date_creation: string;
+          date_echeance: string;
+          statut: string;
+          date_realisation: string | null;
+          date_verification: string | null;
+          verificateur_id: string | null;
+          preuve_cloture: Json | null;
+          commentaire: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['actions_risques']['Row'], 'id' | 'date_echeance' | 'created_at' | 'updated_at'> & { date_echeance?: string };
+        Update: Partial<Database['public']['Tables']['actions_risques']['Insert']>;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -193,6 +265,12 @@ export interface Database {
       resultat_audit: 'CONFORME' | 'NON_CONFORME' | 'CONFORME_RESERVES';
       type_ecart: 'EPI_MANQUANT' | 'ZONE_NON_SECURISEE' | 'INTERVENANT_NON_HABILITE' | 'CONDITION_METEO' | 'DEFAUT_ISOLATION' | 'ECART_PROCEDURE' | 'RISQUE_TIERS' | 'AUTRE';
       niveau_risque: 'MODERE' | 'ELEVE' | 'CRITIQUE';
+      phase_risque: 'INSTALLATION' | 'OPERATION';
+      niveau_criticite: 'FAIBLE' | 'MODERE' | 'ELEVE' | 'CRITIQUE';
+      statut_risque: 'OUVERT' | 'EN_COURS' | 'SOUS_SURVEILLANCE' | 'CLOTURE';
+      type_mesure_hierarchie: 'ELIMINATION' | 'SUBSTITUTION' | 'CONTROLE_TECHNIQUE' | 'CONTROLE_ADMINISTRATIF' | 'EPI';
+      statut_action_risque: 'PLANIFIEE' | 'EN_COURS' | 'REALISEE' | 'VERIFIEE';
+      type_cotation: 'INITIALE' | 'INTERMEDIAIRE' | 'RESIDUELLE';
     };
   };
 }

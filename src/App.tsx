@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import {
-  Shield, AlertTriangle, ClipboardCheck, Building2, Database,
+  Shield, AlertTriangle, ClipboardCheck, Building2, Database, Radar,
   ChevronRight, ChevronLeft, Menu, X, Sun, Moon, LogOut, Search,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ElementType } from 'react';
@@ -35,6 +35,9 @@ const DashboardAccidentologie = lazy(() =>
 );
 const DashboardAudit = lazy(() =>
   import('@/modules/audit/components/DashboardAudit').then(m => ({ default: m.DashboardAudit })),
+);
+const DashboardAnalyseRisques = lazy(() =>
+  import('@/modules/analyse-risques/components/DashboardAnalyseRisques').then(m => ({ default: m.DashboardAnalyseRisques })),
 );
 const DashboardPrestataires = lazy(() =>
   import('@/modules/prestataires/components/DashboardPrestataires').then(m => ({ default: m.DashboardPrestataires })),
@@ -79,6 +82,18 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Audit HSE',
         end: true,
         description: 'Planning & rapports',
+      },
+    ],
+  },
+  {
+    label: 'Prévention & Maîtrise des risques',
+    items: [
+      {
+        to: '/analyse-risques',
+        icon: Radar,
+        label: 'Analyse des risques',
+        end: true,
+        description: 'Installation & Opération',
       },
     ],
   },
@@ -496,6 +511,7 @@ function Layout() {
               <Route path="/at/nouvelle"   element={<ProtectedRoute><ATCreationWizard /></ProtectedRoute>} />
               <Route path="/accidentologie" element={<ProtectedRoute><DashboardAccidentologie /></ProtectedRoute>} />
               <Route path="/audit"          element={<ProtectedRoute><DashboardAudit /></ProtectedRoute>} />
+              <Route path="/analyse-risques" element={<ProtectedRoute><DashboardAnalyseRisques /></ProtectedRoute>} />
               <Route path="/prestataires"   element={<ProtectedRoute><DashboardPrestataires /></ProtectedRoute>} />
               <Route
                 path="/base-donnees"
