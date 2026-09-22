@@ -200,11 +200,11 @@ function InfoLine({ label, value, highlight }: { label: string; value: string; h
 // ── Arbre des causes — visualisation SVG ─────────────────────────────────────
 
 // Dimensions du canvas
-const NODE_W  = 158;
-const NODE_H  = 62;
-const ROW_H   = 84;
+const NODE_W  = 192;
+const NODE_H  = 68;
+const ROW_H   = 90;
 const PAD_Y   = 28;
-const COL_GAP = 52;
+const COL_GAP = 56;
 
 // Positions X des 4 colonnes (profonde | interm. | immédiat | dommage)
 const COL_X = [0, NODE_W + COL_GAP, (NODE_W + COL_GAP) * 2, (NODE_W + COL_GAP) * 3];
@@ -890,7 +890,7 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
     <div className="min-h-screen">
       {/* Topbar */}
       <header className="bg-[#0077aa] shadow-lg sticky top-0 z-30">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
           <button type="button" onClick={onBack}
             className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors flex-shrink-0">
             <ArrowLeft size={18} className="text-white" />
@@ -903,7 +903,7 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
         </div>
 
         {/* Stepper statut */}
-        <div className="max-w-3xl mx-auto px-4 pb-3">
+        <div className="max-w-5xl mx-auto px-4 pb-3">
           <div className="flex items-center gap-0">
             {WORKFLOW.map((s, i) => {
               const done    = WORKFLOW.indexOf(local.statut) > i;
@@ -936,7 +936,7 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-4 pb-24">
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-4 pb-24">
 
         <InfoGenerales dossier={local} />
         <VictimesTemoins dossier={local} />
