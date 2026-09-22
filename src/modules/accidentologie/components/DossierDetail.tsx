@@ -1,7 +1,7 @@
-import { useState, type ReactNode, type ElementType } from 'react';
+import { useEffect, useState, type ReactNode, type ElementType } from 'react';
 import {
   ArrowLeft, User, MapPin, Clock, Link2, ChevronDown, ChevronUp,
-  CheckCircle2, Plus, Check, X, Calendar, Edit3,
+  CheckCircle2, Plus, Check, X, Calendar, Edit3, Printer,
   FileText, Users, Network, ClipboardList, Lightbulb,
 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -29,18 +29,41 @@ function Section({
   defaultOpen?: boolean; badge?: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+
+  // Impression / export PDF : chaque section se déplie temporairement le
+  // temps de l'impression (sinon un accordéon fermé — ex. "Leçons retenues"
+  // par défaut — serait absent du PDF puisque son contenu n'est même pas
+  // dans le DOM), puis revient à son état précédent une fois terminé.
+  useEffect(() => {
+    const wasOpen = open;
+    function handleBeforePrint() { setOpen(true); }
+    function handleAfterPrint() { setOpen(wasOpen); }
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [open]);
+
   return (
     <div className="card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[var(--bg-hover)] transition-colors"
+        className="no-print w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-[var(--bg-hover)] transition-colors"
       >
         <Icon size={16} className="text-[color:var(--badge-navy-text)] flex-shrink-0" />
         <span className="font-semibold text-[color:var(--text-primary)] text-sm flex-1">{title}</span>
         {badge}
         {open ? <ChevronUp size={16} className="text-[color:var(--text-muted)]" /> : <ChevronDown size={16} className="text-[color:var(--text-muted)]" />}
       </button>
+      {/* Titre visible à l'impression uniquement (le bouton ci-dessus est masqué) */}
+      <div className="hidden print:flex items-center gap-3 px-5 pt-4 pb-2">
+        <Icon size={16} className="text-[color:var(--badge-navy-text)] flex-shrink-0" />
+        <span className="font-semibold text-[color:var(--text-primary)] text-sm flex-1">{title}</span>
+        {badge}
+      </div>
       {open && <div className="px-5 pb-5">{children}</div>}
     </div>
   );
@@ -889,7 +912,7 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
   return (
     <div className="min-h-screen">
       {/* Topbar */}
-      <header className="bg-[#0077aa] shadow-lg sticky top-0 z-30">
+      <header className="no-print bg-[#0077aa] shadow-lg sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
           <button type="button" onClick={onBack}
             className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center hover:bg-white/20 transition-colors flex-shrink-0">
@@ -899,6 +922,17 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
             <p className="text-white/60 text-xs font-mono">{local.numero}</p>
             <h1 className="text-white font-bold text-sm leading-tight truncate">{local.titre}</h1>
           </div>
+          {local.statut === 'CLOTURE' && (
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-white text-xs font-semibold transition-colors flex-shrink-0"
+              title="Générer le rapport PDF du dossier"
+            >
+              <Printer size={14} />
+              <span className="hidden sm:inline">Rapport PDF</span>
+            </button>
+          )}
           <BadgeStatut statut={local.statut} variant="header" />
         </div>
 
@@ -937,6 +971,32 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-4 pb-24">
+
+        {/* En-tête imprimable — le bandeau coloré ci-dessus est masqué à
+            l'impression (les navigateurs n'impriment pas les fonds de
+            couleur par défaut) ; ce bloc reprend la même identité en texte
+            sombre garanti lisible sur papier. */}
+        <div className="hidden print:block pb-4 mb-1 border-b-2 border-[#0077aa]">
+          <p className="text-xs font-mono text-slate-500">{local.numero}</p>
+          <h1 className="text-xl font-bold text-slate-900">{local.titre}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-slate-600">
+            <span className="font-semibold">{LABELS_TYPE[local.type_evenement]}</span>
+            <span>·</span>
+            <span>{LABELS_STATUT[local.statut]}</span>
+            {local.date_cloture && (
+              <>
+                <span>·</span>
+                <span>Clôturé le {format(new Date(local.date_cloture), 'dd MMMM yyyy', { locale: fr })}</span>
+              </>
+            )}
+            {local.validateur_cloture && (
+              <>
+                <span>·</span>
+                <span>Validé par {local.validateur_cloture}</span>
+              </>
+            )}
+          </div>
+        </div>
 
         <InfoGenerales dossier={local} />
         <VictimesTemoins dossier={local} />

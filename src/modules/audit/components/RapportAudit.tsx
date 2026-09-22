@@ -7,7 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { clsx } from 'clsx';
 import {
   ArrowLeft, FileText, Download, CheckCircle2, AlertTriangle,
-  Clock, XCircle, TrendingUp, User, Calendar, MapPin, Printer, BarChart2,
+  Clock, XCircle, TrendingUp, User, Calendar, MapPin, BarChart2,
 } from 'lucide-react';
 
 import { CHECKLIST_STANDARD } from '../data/checklist.data';
@@ -317,13 +317,6 @@ export function RapportAudit({ audit, onBack }: Props) {
           )}>
             {LABELS_STATUT_AUDIT[audit.statut]}
           </span>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-[color:var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors border border-[var(--border)]"
-          >
-            <Printer size={14} />
-            Imprimer
-          </button>
           <button
             onClick={handlePrint}
             className="flex items-center gap-1.5 px-3 py-2 bg-[#0077aa] text-white rounded-xl text-sm font-semibold hover:bg-[#0088cc] transition-colors shadow-sm"

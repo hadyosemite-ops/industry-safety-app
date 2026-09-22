@@ -3,15 +3,104 @@ import {
   AlertTriangle, TrendingDown, TrendingUp,
   Search, CheckCircle2,
   BarChart2, FileWarning, Eye,
+  LayoutGrid, List, Clock, MapPin, User, ChevronRight,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { DOSSIERS_DEMO, KPIS_DEMO, HISTORIQUE_TF, OBJECTIF_TF } from '../data/demo.data';
 import type { DossierAccident, TypeEvenement, StatutDossier } from '../types';
 import { LABELS_TYPE, ICONES_TYPE } from '../types';
-import { DossierCard } from './DossierCard';
+import { DossierCard, BadgeStatut } from './DossierCard';
 import { DossierDetail } from './DossierDetail';
 import { DeclarationWizard } from './DeclarationWizard';
 import { ModuleHeader } from '@/components/ui/ModuleHeader';
+
+const ACCIDENTS_VUE_KEY = 'hse-accidents-vue';
+
+// ── Vue liste (tableau) ───────────────────────────────────────────────────────
+
+function DossiersListe({ dossiers, onSelect }: { dossiers: DossierAccident[]; onSelect: (d: DossierAccident) => void }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--bg-hover)]">
+            <tr>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Dossier</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Type</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Date</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Zone</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Victime</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Actions</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Statut</th>
+              <th className="px-4 py-2.5 w-8" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[color:var(--border)]">
+            {dossiers.map(d => {
+              const dateEvt = format(new Date(d.date_evenement), 'dd MMM yyyy HH:mm', { locale: fr });
+              const victime = d.victimes[0];
+              const realisees = d.actions.filter(a => a.statut === 'REALISEE').length;
+              return (
+                <tr
+                  key={d.id}
+                  onClick={() => onSelect(d)}
+                  className="cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
+                >
+                  <td className="px-4 py-2.5">
+                    <div className="text-xs font-mono text-[color:var(--text-muted)]">{d.numero}</div>
+                    <div className="font-medium text-[color:var(--text-primary)] text-sm truncate max-w-xs">{d.titre}</div>
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1">
+                      <span>{ICONES_TYPE[d.type_evenement]}</span>
+                      {LABELS_TYPE[d.type_evenement]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock size={11} className="text-[color:var(--text-muted)]" />
+                      {dateEvt}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin size={11} className="text-[color:var(--text-muted)]" />
+                      {d.zone_code}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    {victime ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <User size={11} className="text-[color:var(--text-muted)]" />
+                        {victime.prenom} {victime.nom}
+                        {victime.jours_arret > 0 && (
+                          <span className="text-orange-400 font-medium">· {victime.jours_arret}j</span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-[color:var(--text-muted)]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    {d.actions.length > 0 ? `${realisees}/${d.actions.length}` : <span className="text-[color:var(--text-muted)]">—</span>}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <BadgeStatut statut={d.statut} />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <ChevronRight size={15} className="text-[color:var(--text-muted)]" />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 // ── Onglets ────────────────────────────────────────────────────────────────────
 
@@ -127,6 +216,14 @@ export function DashboardAccidentologie() {
   const [dossierOuvert, setDossierOuvert] = useState<DossierAccident | null>(null);
   const [showWizard,   setShowWizard]  = useState(false);
   const [dossiers,     setDossiers]    = useState<DossierAccident[]>(DOSSIERS_DEMO);
+  const [vue, setVue] = useState<'carte' | 'liste'>(
+    () => (typeof window !== 'undefined' && window.localStorage.getItem(ACCIDENTS_VUE_KEY) === 'liste') ? 'liste' : 'carte',
+  );
+
+  function changerVue(next: 'carte' | 'liste') {
+    setVue(next);
+    window.localStorage.setItem(ACCIDENTS_VUE_KEY, next);
+  }
 
   const kpis = KPIS_DEMO;
 
@@ -340,6 +437,18 @@ export function DashboardAccidentologie() {
         {/* ── Onglets type (filtre secondaire) ── */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-[color:var(--text-muted)] font-medium">Filtrer par type :</span>
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--bg-hover)] ml-auto">
+            <button type="button" onClick={() => changerVue('carte')} aria-label="Affichage en cartes" title="Affichage en cartes"
+              className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+                vue === 'carte' ? 'bg-[var(--bg-elevated)] text-[color:var(--text-primary)] shadow-sm' : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]')}>
+              <LayoutGrid size={13} />Cartes
+            </button>
+            <button type="button" onClick={() => changerVue('liste')} aria-label="Affichage en liste" title="Affichage en liste"
+              className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+                vue === 'liste' ? 'bg-[var(--bg-elevated)] text-[color:var(--text-primary)] shadow-sm' : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]')}>
+              <List size={13} />Liste
+            </button>
+          </div>
           {(
             ['GRAVE', 'BENIN', 'PRESQU_ACCIDENT', 'SITUATION_DANGEREUSE', 'OBSERVATION'] as TypeEvenement[]
           ).map(type => {
@@ -379,11 +488,15 @@ export function DashboardAccidentologie() {
               {recherche ? 'Aucun résultat pour cette recherche.' : 'Aucun événement dans cette catégorie.'}
             </p>
           </div>
-        ) : (
+        ) : vue === 'carte' ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-20">
             {dossiersFiltres.map(d => (
               <DossierCard key={d.id} dossier={d} onClick={setDossierOuvert} />
             ))}
+          </div>
+        ) : (
+          <div className="pb-20">
+            <DossiersListe dossiers={dossiersFiltres} onSelect={setDossierOuvert} />
           </div>
         )}
 

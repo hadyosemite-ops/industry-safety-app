@@ -182,7 +182,7 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
   return (
     <aside
       className={clsx(
-        'fixed left-0 top-0 h-screen flex flex-col z-40 select-none border-r',
+        'no-print fixed left-0 top-0 h-screen flex flex-col z-40 select-none border-r',
         'w-[240px]',
         collapsed ? 'lg:w-[72px]' : 'lg:w-[240px]',
         'transform transition-all duration-200 ease-out lg:translate-x-0',
@@ -473,7 +473,7 @@ function Layout() {
       )}>
         {/* Barre mobile — hamburger, visible uniquement sous 1024px */}
         <div
-          className="lg:hidden sticky top-0 z-20 flex items-center gap-3 px-4 py-3 backdrop-blur-md border-b"
+          className="no-print lg:hidden sticky top-0 z-20 flex items-center gap-3 px-4 py-3 backdrop-blur-md border-b"
           style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
         >
           <button

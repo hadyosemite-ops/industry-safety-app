@@ -7,6 +7,7 @@ import { clsx } from 'clsx';
 import {
   ClipboardCheck, Calendar, BarChart2, AlertTriangle,
   CheckCircle2, Clock, ChevronRight, Plus, Filter,
+  LayoutGrid, List,
 } from 'lucide-react';
 import { KpiCard, KpiGrid } from '@/components/ui/KpiCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -163,6 +164,98 @@ function AuditCard({ audit, onSelect }: AuditCardProps) {
         </div>
       )}
     </button>
+  );
+}
+
+// ── Liste audits — vue tableau compacte ───────────────────────────────────────
+
+function AuditListe({ audits, onSelect }: { audits: Audit[]; onSelect: (a: Audit) => void }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--bg-hover)]">
+            <tr>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Zone</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Type</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Date</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Auditeur</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs w-24">Score</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Écarts</th>
+              <th className="text-left px-4 py-2.5 text-[color:var(--text-muted)] font-semibold text-xs">Statut</th>
+              <th className="px-4 py-2.5 w-8" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[color:var(--border)]">
+            {audits.map(audit => {
+              const score      = audit.score_global ?? 0;
+              const nc         = niveauConformite(score);
+              const ncMajeurs  = audit.ecarts.filter(e => e.niveau === 'MAJEUR').length;
+              const ncOuverts  = audit.ecarts.filter(e => e.statut !== 'CLOS').length;
+              return (
+                <tr
+                  key={audit.id}
+                  onClick={() => onSelect(audit)}
+                  className="cursor-pointer hover:bg-[var(--bg-hover)] transition-colors"
+                >
+                  <td className="px-4 py-2.5">
+                    <p className="font-semibold text-[color:var(--text-primary)] truncate max-w-[160px]">{audit.zone}</p>
+                    <p className="text-[10px] text-[color:var(--text-muted)] font-mono">{audit.numero}</p>
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    {ICONES_TYPE_AUDIT[audit.type_audit]} {LABELS_TYPE_AUDIT[audit.type_audit]}
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    {new Date(audit.date_audit).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td className="px-4 py-2.5 text-[color:var(--text-secondary)] truncate max-w-[140px]">{audit.auditeur}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={clsx('inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border', nc.bg, nc.border, nc.color)}>
+                      {score}%
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {audit.ecarts.length === 0 ? (
+                      <span className="text-xs text-[color:var(--text-muted)]">—</span>
+                    ) : (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {ncMajeurs > 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-danger-50 text-[color:var(--badge-danger-text)] font-medium">
+                            <AlertTriangle size={9} /> {ncMajeurs}
+                          </span>
+                        )}
+                        {ncOuverts > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-[color:var(--badge-amber-text)] font-medium">
+                            <Clock size={9} /> {ncOuverts} ouvert{ncOuverts > 1 ? 's' : ''}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-success-50 text-[color:var(--badge-success-text)] font-medium">
+                            <CheckCircle2 size={9} /> Clos
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className={clsx(
+                      'text-[11px] font-semibold px-2 py-0.5 rounded-full border whitespace-nowrap',
+                      audit.statut === 'VALIDE'  ? 'bg-success-50 text-[color:var(--badge-success-text)] border-success-200' :
+                      audit.statut === 'REALISE' ? 'bg-navy-50 text-[color:var(--badge-navy-text)] border-navy-200'   :
+                      'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)]',
+                    )}>
+                      {LABELS_STATUT_AUDIT[audit.statut]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <ChevronRight size={14} className="text-[color:var(--text-muted)]" />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -399,10 +492,20 @@ function TabDashboard({ onNouvelAudit }: { onNouvelAudit: () => void }) {
 
 // ── Onglet Audits réalisés ─────────────────────────────────────────────────────
 
+const AUDITS_VUE_KEY = 'hse-audits-vue';
+
 function TabAudits({ onSelect }: { onSelect: (a: Audit) => void }) {
   const [filterType, setFilterType]     = useState<TypeAudit | 'TOUS'>('TOUS');
   const [filterStatut, setFilterStatut] = useState<StatutAudit | 'TOUS'>('TOUS');
   const [filterZone, setFilterZone]     = useState<string>('TOUTES');
+  const [vue, setVue] = useState<'carte' | 'liste'>(
+    () => (typeof window !== 'undefined' && window.localStorage.getItem(AUDITS_VUE_KEY) === 'liste') ? 'liste' : 'carte',
+  );
+
+  function changerVue(next: 'carte' | 'liste') {
+    setVue(next);
+    window.localStorage.setItem(AUDITS_VUE_KEY, next);
+  }
 
   const zones = [...new Set(AUDITS_DEMO.map(a => a.zone))];
 
@@ -467,25 +570,57 @@ function TabAudits({ onSelect }: { onSelect: (a: Audit) => void }) {
           {zones.map(z => <option key={z} value={z}>{z}</option>)}
         </select>
 
-        <span className="text-[11px] text-[color:var(--text-muted)] ml-auto">{filtered.length} audit{filtered.length > 1 ? 's' : ''}</span>
+        <span className="text-[11px] text-[color:var(--text-muted)]">{filtered.length} audit{filtered.length > 1 ? 's' : ''}</span>
+
+        {/* Choix d'affichage : carte / liste */}
+        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--bg-hover)] ml-auto">
+          <button
+            type="button"
+            onClick={() => changerVue('carte')}
+            aria-label="Affichage en cartes"
+            title="Affichage en cartes"
+            className={clsx(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+              vue === 'carte' ? 'bg-[var(--bg-elevated)] text-[color:var(--text-primary)] shadow-sm' : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]',
+            )}
+          >
+            <LayoutGrid size={13} />
+            Cartes
+          </button>
+          <button
+            type="button"
+            onClick={() => changerVue('liste')}
+            aria-label="Affichage en liste"
+            title="Affichage en liste"
+            className={clsx(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+              vue === 'liste' ? 'bg-[var(--bg-elevated)] text-[color:var(--text-primary)] shadow-sm' : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]',
+            )}
+          >
+            <List size={13} />
+            Liste
+          </button>
+        </div>
       </div>
 
-      {/* Liste */}
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <div className="card">
-            <EmptyState
-              icon={ClipboardCheck}
-              variant="filtered"
-              title="Aucun audit"
-              description="Aucun audit ne correspond aux filtres sélectionnés."
-              size="sm"
-            />
-          </div>
-        ) : (
-          filtered.map(a => <AuditCard key={a.id} audit={a} onSelect={onSelect} />)
-        )}
-      </div>
+      {/* Résultats */}
+      {filtered.length === 0 ? (
+        <div className="card">
+          <EmptyState
+            icon={ClipboardCheck}
+            variant="filtered"
+            title="Aucun audit"
+            description="Aucun audit ne correspond aux filtres sélectionnés."
+            size="sm"
+          />
+        </div>
+      ) : vue === 'carte' ? (
+        <div className="space-y-3">
+          {filtered.map(a => <AuditCard key={a.id} audit={a} onSelect={onSelect} />)}
+        </div>
+      ) : (
+        <AuditListe audits={filtered} onSelect={onSelect} />
+      )}
     </div>
   );
 }

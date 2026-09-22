@@ -273,7 +273,7 @@ export function ChatAssistant() {
         aria-label={open ? "Fermer l'Assistant HSE" : "Ouvrir l'Assistant HSE"}
         aria-expanded={open}
         className={clsx(
-          'fixed bottom-5 right-5 z-[90] w-14 h-14 rounded-full flex items-center justify-center',
+          'no-print fixed bottom-5 right-5 z-[90] w-14 h-14 rounded-full flex items-center justify-center',
           'shadow-lg transition-transform duration-150 hover:scale-105 active:scale-95',
         )}
         style={{ background: 'linear-gradient(135deg, #00d4ff, #0077aa)', boxShadow: '0 4px 24px rgba(0,212,255,0.45)' }}
@@ -287,7 +287,7 @@ export function ChatAssistant() {
           role="complementary"
           aria-label="Assistant HSE"
           className={clsx(
-            'fixed z-[89] bottom-24 right-5 flex flex-col overflow-hidden',
+            'no-print fixed z-[89] bottom-24 right-5 flex flex-col overflow-hidden',
             'w-[calc(100vw-2.5rem)] max-w-[1140px] h-[min(600px,calc(100vh-8rem))]',
             'bg-[var(--bg-card)] backdrop-blur-[16px] border border-[var(--border-strong)] rounded-2xl shadow-2xl',
           )}
