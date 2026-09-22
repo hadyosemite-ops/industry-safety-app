@@ -53,15 +53,9 @@ function TimelineCotations({ risque }: { risque: RisqueIndustriel }) {
   );
 }
 
-// ── Plan d'action (compact, propre à ce risque) ───────────────────────────────
+// ── Plan d'action — tableau classique, propre à ce risque ────────────────────
 
-function ActionLigne({ action, onChangerStatut, onCloturer }: {
-  action: ActionRisque;
-  onChangerStatut: (id: string, statut: ActionRisque['statut']) => void;
-  onCloturer: (id: string) => void;
-}) {
-  const enRetard = actionEstEnRetard(action);
-  const bientot = actionEcheanceProche(action);
+function CellulePreuve({ action, onCloture }: { action: ActionRisque; onCloture: () => void }) {
   const [fichierEnCours, setFichierEnCours] = useState(false);
 
   async function handleFichier(e: React.ChangeEvent<HTMLInputElement>) {
@@ -72,53 +66,91 @@ function ActionLigne({ action, onChangerStatut, onCloturer }: {
     reader.onload = async () => {
       const preuve: PreuveCloture = { url: String(reader.result), nom: file.name, type: file.type };
       await actionService.cloturerActionAvecPreuve(action.id, [...action.preuve_cloture, preuve]);
-      onCloturer(action.id);
+      onCloture();
       setFichierEnCours(false);
     };
     reader.readAsDataURL(file);
   }
 
+  const aDesPreuves = action.preuve_cloture.length > 0;
+
   return (
-    <div className={clsx(
-      'rounded-xl border p-3.5 space-y-2',
-      enRetard ? 'border-danger-300 bg-danger-50/30' : bientot ? 'border-amber-300 bg-amber-50/20' : 'border-[var(--border)]',
-    )}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-[color:var(--text-primary)] font-medium">{action.description}</p>
-          <div className="flex items-center gap-2 flex-wrap mt-1">
-            <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--bg-hover)] text-[color:var(--text-secondary)]">
-              {LABELS_TYPE_MESURE[action.type_mesure]}
-            </span>
-            <span className="text-[11px] text-[color:var(--text-muted)] flex items-center gap-1">
-              <Clock size={10} /> Échéance {format(new Date(action.date_echeance), 'dd MMM yyyy', { locale: fr })}
-            </span>
-            {enRetard && <span className="text-[11px] font-semibold text-[color:var(--badge-danger-text)] flex items-center gap-1"><AlertTriangle size={10} /> En retard</span>}
-            {!enRetard && bientot && <span className="text-[11px] font-semibold text-amber-600 flex items-center gap-1"><AlertTriangle size={10} /> Échéance proche</span>}
-          </div>
-        </div>
-        <select
-          value={action.statut}
-          onChange={e => onChangerStatut(action.id, e.target.value as ActionRisque['statut'])}
-          className="form-select text-[11px] px-2 py-1 rounded-lg flex-shrink-0"
-        >
-          {ORDRE_STATUT_ACTION.map(s => <option key={s} value={s}>{LABELS_STATUT_ACTION[s]}</option>)}
-        </select>
+    <label
+      className={clsx(
+        'inline-flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer transition-colors',
+        aDesPreuves ? 'text-[color:var(--badge-navy-text)] bg-[rgba(0,212,255,0.08)]' : 'text-[color:var(--text-muted)] hover:bg-[var(--bg-hover)]',
+      )}
+      title={aDesPreuves ? `${action.preuve_cloture.length} pièce(s) jointe(s)` : 'Joindre une preuve de clôture'}
+    >
+      {fichierEnCours ? <Loader2 size={13} className="animate-spin" /> : <Paperclip size={13} />}
+      <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFichier} disabled={fichierEnCours} />
+    </label>
+  );
+}
+
+function TableauActions({ actions, onChangerStatut, onCloture }: {
+  actions: ActionRisque[];
+  onChangerStatut: (id: string, statut: ActionRisque['statut']) => void;
+  onCloture: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--bg-hover)]">
+            <tr>
+              <th className="text-left px-3 py-2 text-[color:var(--text-muted)] font-semibold text-xs">Action</th>
+              <th className="text-left px-3 py-2 text-[color:var(--text-muted)] font-semibold text-xs">Type</th>
+              <th className="text-left px-3 py-2 text-[color:var(--text-muted)] font-semibold text-xs">Pilote</th>
+              <th className="text-left px-3 py-2 text-[color:var(--text-muted)] font-semibold text-xs">Échéance</th>
+              <th className="text-left px-3 py-2 text-[color:var(--text-muted)] font-semibold text-xs">Statut</th>
+              <th className="px-3 py-2 w-10" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[color:var(--border)]">
+            {actions.map(action => {
+              const enRetard = actionEstEnRetard(action);
+              const bientot = actionEcheanceProche(action);
+              return (
+                <tr key={action.id} className="hover:bg-[var(--bg-hover)] transition-colors">
+                  <td className="px-3 py-2.5 max-w-[220px]">
+                    <p className="text-[color:var(--text-primary)] font-medium truncate" title={action.description}>{action.description}</p>
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--bg-hover)] text-[color:var(--text-secondary)]">
+                      {LABELS_TYPE_MESURE[action.type_mesure]}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-[color:var(--text-secondary)] whitespace-nowrap">
+                    {action.responsable_nom ?? <span className="text-[color:var(--text-muted)]">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <span
+                      className="inline-flex items-center gap-1"
+                      style={{ color: enRetard ? '#ef4444' : bientot ? '#f59e0b' : 'var(--text-secondary)' }}
+                    >
+                      {(enRetard || bientot) ? <AlertTriangle size={11} /> : <Clock size={11} />}
+                      {format(new Date(action.date_echeance), 'dd MMM yyyy', { locale: fr })}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <select
+                      value={action.statut}
+                      onChange={e => onChangerStatut(action.id, e.target.value as ActionRisque['statut'])}
+                      className="form-select w-auto text-[11px] px-2 py-1 rounded-lg"
+                    >
+                      {ORDRE_STATUT_ACTION.map(s => <option key={s} value={s}>{LABELS_STATUT_ACTION[s]}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {action.statut !== 'VERIFIEE' && <CellulePreuve action={action} onCloture={onCloture} />}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-
-      {action.preuve_cloture.length > 0 && (
-        <p className="text-[11px] text-[color:var(--text-muted)] flex items-center gap-1">
-          <Paperclip size={10} /> {action.preuve_cloture.length} pièce{action.preuve_cloture.length > 1 ? 's' : ''} jointe{action.preuve_cloture.length > 1 ? 's' : ''}
-        </p>
-      )}
-
-      {action.statut !== 'VERIFIEE' && (
-        <label className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[color:var(--badge-navy-text)] cursor-pointer hover:underline">
-          {fichierEnCours ? <Loader2 size={11} className="animate-spin" /> : <Paperclip size={11} />}
-          Joindre une preuve de clôture (photo/document)
-          <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFichier} disabled={fichierEnCours} />
-        </label>
-      )}
     </div>
   );
 }
@@ -374,12 +406,15 @@ export function RisqueDetail({ risque: risqueProp, onBack, onUpdate }: Props) {
               {actions.filter(a => a.statut === 'VERIFIEE').length}/{actions.length} vérifiée{actions.length > 1 ? 's' : ''}
             </span>
           </div>
-          <div className="space-y-2.5">
-            {actions.map(a => (
-              <ActionLigne key={a.id} action={a} onChangerStatut={handleChangerStatutAction} onCloturer={() => void refetchActions()} />
-            ))}
-            {actions.length === 0 && <p className="text-xs text-[color:var(--text-muted)] italic">Aucune action pour ce risque.</p>}
-          </div>
+          {actions.length > 0 ? (
+            <TableauActions
+              actions={actions}
+              onChangerStatut={handleChangerStatutAction}
+              onCloture={() => void refetchActions()}
+            />
+          ) : (
+            <p className="text-xs text-[color:var(--text-muted)] italic">Aucune action pour ce risque.</p>
+          )}
           <NouvelleAction risqueId={risque.id} onCree={() => void refetchActions()} />
         </div>
 
