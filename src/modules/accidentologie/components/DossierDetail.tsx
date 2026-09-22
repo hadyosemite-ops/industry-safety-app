@@ -921,6 +921,12 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
   const [local, setLocal] = useState<DossierAccident>(dossier);
   const [utilisateurs, setUtilisateurs] = useState<UtilisateurOption[]>([]);
   const [avancement, setAvancement] = useState(false);
+  // Bascule manuelle de la méthode d'investigation — null = déduit automatiquement
+  // de la gravité/du contenu (voir `useArbre` plus bas). Sans cet état, le bouton
+  // "Basculer vers…" n'avait aucun effet visible : useArbre ne dépendait que de
+  // champs qu'il effaçait lui-même sans jamais changer de valeur (ex. toujours
+  // vrai pour un événement GRAVE/FATAL, quoi qu'on efface).
+  const [modeManuel, setModeManuel] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!profile?.site_id) return;
@@ -953,6 +959,7 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
     // Bascule entre les deux méthodes d'investigation — on efface les deux
     // dans tous les cas (une seule méthode est affichée à la fois selon
     // `useArbre`, l'autre repart donc de zéro à la prochaine bascule).
+    setModeManuel(!useArbre);
     void persisterCauses([]);
     void persisterChamps({ cinq_pourquoi: [] });
   }
@@ -969,10 +976,11 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
   const peutAvancer = local.statut !== 'CLOTURE';
   const statutSuivant = WORKFLOW[WORKFLOW.indexOf(local.statut) + 1];
 
-  const useArbre =
+  const useArbre = modeManuel !== null ? modeManuel : (
     local.type_evenement === 'FATAL' ||
     local.type_evenement === 'GRAVE' ||
-    local.arbre_causes.length > 0;
+    local.arbre_causes.length > 0
+  );
 
   return (
     <div className="min-h-screen">
