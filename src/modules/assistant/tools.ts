@@ -22,6 +22,8 @@ import * as intervenantsService from '@/modules/admin/services/intervenantsServi
 import * as utilisateursService from '@/modules/admin/services/utilisateursService';
 import * as risqueService from '@/modules/analyse-risques/services/risqueService';
 import * as actionRisqueService from '@/modules/analyse-risques/services/actionService';
+import * as dossierAccidentService from '@/modules/accidentologie/services/dossierService';
+import * as actionAccidentService from '@/modules/accidentologie/services/actionService';
 import { calculerKpis } from './services/kpiService';
 import {
   RoleUtilisateur, StatutAT, TypeEcart, TypePermis, TypeAudit, ResultatAudit, NiveauRisque,
@@ -35,6 +37,14 @@ import {
 } from '@/modules/analyse-risques/types';
 import type { CreerRisquePayload, ReevaluerRisquePayload } from '@/modules/analyse-risques/services/risqueService';
 import type { CreerActionPayload } from '@/modules/analyse-risques/services/actionService';
+import {
+  LABELS_TYPE as LABELS_TYPE_EVENEMENT, LABELS_STATUT as LABELS_STATUT_DOSSIER,
+  LABELS_ACTION_STATUT as LABELS_STATUT_ACTION_ACC, LABELS_CATEGORIE_ACTION,
+  type TypeEvenement, type StatutDossier, type StatutAction as StatutActionAccident,
+  type CategorieAction, type Victime, type Temoin,
+} from '@/modules/accidentologie/types';
+import type { CreerDossierPayload, MettreAJourDossierPayload } from '@/modules/accidentologie/services/dossierService';
+import type { CreerActionAccidentPayload } from '@/modules/accidentologie/services/actionService';
 
 // ------------------------------------------------------------
 // Contexte d'exécution — dérivé de la session/profil de l'utilisateur
@@ -61,7 +71,7 @@ export interface ToolExecutionResult {
 export const OUTILS_DESTRUCTIFS = [
   'suspendre_at', 'cloturer_at', 'supprimer_intervenant',
   'supprimer_zone', 'rejeter_permis', 'modifier_roles_utilisateur',
-  'changer_statut_risque',
+  'changer_statut_risque', 'cloturer_dossier_accidentologie',
 ] as const;
 
 export function estOutilDestructif(nom: string): boolean {
@@ -634,6 +644,169 @@ export const TOOLS = [
       additionalProperties: false,
     },
   },
+
+  // ── Accidentologie ────────────────────────────────────────────────────────
+
+  {
+    name: 'get_kpis_accidentologie',
+    description:
+      "Renvoie les indicateurs accidentologie à jour du site de l'utilisateur : TF (taux de fréquence), TG (taux de "
+      + "gravité), IF (indice de fréquence), nombre d'AT avec/sans arrêt, presqu'accidents, situations dangereuses, "
+      + 'observations, jours perdus, taux de clôture des actions et taux de proactivité (presqu\'accidents vs '
+      + 'accidents réels). Calcul approximatif basé sur l\'effectif et les heures travaillées mensuelles déclarés '
+      + "pour le site. À appeler pour tout état des lieux — ne réutilise jamais un chiffre déjà donné plus tôt dans "
+      + 'la conversation.',
+    input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'lister_dossiers_accidentologie',
+    description: 'Liste les dossiers accidentologie (accidents, presqu\'accidents, situations dangereuses, '
+      + 'observations), avec filtres optionnels.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        statut: { type: 'string', enum: Object.keys(LABELS_STATUT_DOSSIER), description: 'Filtrer par statut du dossier.' },
+        type_evenement: { type: 'string', enum: Object.keys(LABELS_TYPE_EVENEMENT), description: "Filtrer par type d'événement." },
+        zone_id: { type: 'string', description: 'Filtrer par identifiant de zone.' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_dossier_accidentologie_detail',
+    description: "Récupère le détail complet d'un dossier accidentologie (victimes, témoins, arbre des causes, plan "
+      + "d'actions) par son identifiant.",
+    input_schema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'Identifiant (UUID) du dossier.' } },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'declarer_evenement_accidentologie',
+    description: "Déclare un nouvel événement (accident, presqu'accident, situation dangereuse ou observation) — "
+      + "n'importe quel utilisateur du site peut déclarer, c'est la base de la culture sécurité. Crée le dossier en "
+      + "statut Signalé ; l'Animateur HSE sera responsable d'ouvrir l'investigation ensuite. Action non destructive.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        type_evenement: { type: 'string', enum: Object.keys(LABELS_TYPE_EVENEMENT) },
+        titre: { type: 'string' },
+        date_evenement: { type: 'string', description: 'ISO datetime.' },
+        zone_id: { type: 'string', description: "Optionnel — identifiant d'une zone du site." },
+        lieu: { type: 'string', description: 'Lieu précis (ex. Atelier Énergie — Niveau +4m).' },
+        description: { type: 'string' },
+        declarant_nom: { type: 'string' },
+        declarant_poste: { type: 'string' },
+        at_liee_numero: { type: 'string', description: "Optionnel — numéro d'une AT PTW liée à l'événement." },
+        victimes: {
+          type: 'array',
+          description: 'Personnes blessées, le cas échéant.',
+          items: {
+            type: 'object',
+            properties: {
+              nom: { type: 'string' },
+              prenom: { type: 'string' },
+              poste: { type: 'string' },
+              entreprise: { type: 'string', description: 'Interne ou nom du sous-traitant.' },
+              anciennete_mois: { type: 'number' },
+              nature_blessure: { type: 'string' },
+              siege_lesion: { type: 'string' },
+              jours_arret: { type: 'number', description: '0 = sans arrêt.' },
+            },
+            required: ['nom', 'prenom'],
+          },
+        },
+        temoins: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              nom: { type: 'string' },
+              prenom: { type: 'string' },
+              poste: { type: 'string' },
+              declaration: { type: 'string' },
+            },
+            required: ['nom', 'prenom'],
+          },
+        },
+      },
+      required: ['type_evenement', 'titre', 'date_evenement', 'description', 'declarant_nom', 'declarant_poste'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'avancer_statut_dossier_accidentologie',
+    description: 'Fait progresser un dossier accidentologie (Signalé → Déclaré → En investigation → Plan d\'actions). '
+      + "Pour ouvrir l'investigation, renseigne investigateur_id et date_investigation. Pour la clôture définitive, "
+      + 'utilise plutôt l\'outil cloturer_dossier_accidentologie. Action non destructive.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        statut: { type: 'string', enum: ['DECLARE', 'EN_INVESTIGATION', 'PLAN_ACTIONS'] },
+        investigateur_id: { type: 'string', description: "Optionnel — identifiant d'un utilisateur du site." },
+        date_investigation: { type: 'string', description: 'ISO datetime, optionnel.' },
+      },
+      required: ['id', 'statut'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'cloturer_dossier_accidentologie',
+    description: "Clôture définitivement un dossier accidentologie (→ Clôturé), avec l'utilisateur connecté comme "
+      + 'validateur de clôture. Action DESTRUCTIVE (irréversible) : nécessite une confirmation explicite de '
+      + "l'utilisateur.",
+    input_schema: {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'lister_actions_accidentologie',
+    description: "Liste les actions du plan d'actions — celles d'un dossier précis si dossier_id est fourni, sinon "
+      + 'toutes les actions accidentologie du site (utile pour les alertes de retard/échéance).',
+    input_schema: {
+      type: 'object',
+      properties: { dossier_id: { type: 'string', description: 'Optionnel — identifiant du dossier.' } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'creer_action_accidentologie',
+    description: "Ajoute une action corrective au plan d'actions d'un dossier accidentologie. Action non destructive.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        dossier_id: { type: 'string' },
+        description: { type: 'string' },
+        categorie: { type: 'string', enum: Object.keys(LABELS_CATEGORIE_ACTION) },
+        responsable_id: { type: 'string', description: "Optionnel — identifiant d'un utilisateur du site." },
+        date_echeance: { type: 'string', description: 'ISO date.' },
+        priorite: { type: 'string', enum: ['HAUTE', 'NORMALE', 'BASSE'] },
+        commentaire: { type: 'string' },
+      },
+      required: ['dossier_id', 'description', 'categorie', 'date_echeance'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'changer_statut_action_accidentologie',
+    description: "Change le statut d'une action corrective accidentologie (À faire → En cours → Réalisée). Action "
+      + 'non destructive.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        statut: { type: 'string', enum: Object.keys(LABELS_STATUT_ACTION_ACC) },
+      },
+      required: ['id', 'statut'],
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 // ------------------------------------------------------------
@@ -1012,6 +1185,81 @@ export async function executeTool(
 
       case 'verifier_action_risque': {
         return depuisServiceResult(await actionRisqueService.verifierAction(input.id as string, ctx.userId));
+      }
+
+      case 'get_kpis_accidentologie': {
+        return depuisServiceResult(await dossierAccidentService.calculerKpisAccidentologie(ctx.siteId));
+      }
+
+      case 'lister_dossiers_accidentologie': {
+        return depuisServiceResult(await dossierAccidentService.listerDossiers({
+          statut: input.statut as StatutDossier | undefined,
+          type_evenement: input.type_evenement as TypeEvenement | undefined,
+          zone_id: input.zone_id as string | undefined,
+        }));
+      }
+
+      case 'get_dossier_accidentologie_detail': {
+        return depuisServiceResult(await dossierAccidentService.getDossier(input.id as string));
+      }
+
+      case 'declarer_evenement_accidentologie': {
+        const payload: CreerDossierPayload = {
+          site_id: ctx.siteId,
+          type_evenement: input.type_evenement as TypeEvenement,
+          titre: input.titre as string,
+          date_evenement: input.date_evenement as string,
+          zone_id: (input.zone_id as string) || null,
+          lieu: input.lieu as string | undefined,
+          description: input.description as string,
+          declarant_nom: input.declarant_nom as string,
+          declarant_poste: input.declarant_poste as string,
+          victimes: input.victimes as Omit<Victime, 'id'>[] | undefined,
+          temoins: input.temoins as Omit<Temoin, 'id'>[] | undefined,
+          at_liee_numero: input.at_liee_numero as string | undefined,
+        };
+        return depuisServiceResult(await dossierAccidentService.creerDossier(payload));
+      }
+
+      case 'avancer_statut_dossier_accidentologie': {
+        const patch: MettreAJourDossierPayload = { statut: input.statut as StatutDossier };
+        if (input.investigateur_id) patch.investigateur_id = input.investigateur_id as string;
+        if (input.date_investigation) patch.date_investigation = input.date_investigation as string;
+        return depuisServiceResult(await dossierAccidentService.mettreAJourDossier(input.id as string, patch));
+      }
+
+      case 'cloturer_dossier_accidentologie': {
+        return depuisServiceResult(await dossierAccidentService.changerStatutDossier(
+          input.id as string, 'CLOTURE', ctx.userId,
+        ));
+      }
+
+      case 'lister_actions_accidentologie': {
+        if (input.dossier_id) {
+          return depuisServiceResult(await actionAccidentService.listerActions(input.dossier_id as string));
+        }
+        const dossiers = await dossierAccidentService.listerDossiers();
+        if (dossiers.error) return depuisServiceResult(dossiers);
+        return depuisServiceResult({ data: (dossiers.data ?? []).flatMap(d => d.actions) });
+      }
+
+      case 'creer_action_accidentologie': {
+        const payload: CreerActionAccidentPayload = {
+          dossier_id: input.dossier_id as string,
+          description: input.description as string,
+          categorie: input.categorie as CategorieAction,
+          responsable_id: input.responsable_id as string | undefined,
+          date_echeance: input.date_echeance as string,
+          priorite: input.priorite as CreerActionAccidentPayload['priorite'],
+          commentaire: input.commentaire as string | undefined,
+        };
+        return depuisServiceResult(await actionAccidentService.creerAction(payload));
+      }
+
+      case 'changer_statut_action_accidentologie': {
+        return depuisServiceResult(await actionAccidentService.changerStatutAction(
+          input.id as string, input.statut as StatutActionAccident,
+        ));
       }
 
       default:

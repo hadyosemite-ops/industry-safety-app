@@ -31,6 +31,8 @@ export interface Database {
           adresse: string;
           code_site: string;
           actif: boolean;
+          effectif: number | null;
+          heures_travaillees_mensuelles: number | null;
           created_at: string;
         };
         Insert: Omit<Database['public']['Tables']['sites']['Row'], 'created_at'>;
@@ -246,6 +248,99 @@ export interface Database {
         Insert: Omit<Database['public']['Tables']['actions_risques']['Row'], 'id' | 'date_echeance' | 'created_at' | 'updated_at'> & { date_echeance?: string };
         Update: Partial<Database['public']['Tables']['actions_risques']['Insert']>;
       };
+      dossiers_accidents: {
+        Row: {
+          id: string;
+          site_id: string;
+          numero: string;
+          type_evenement: string;
+          statut: string;
+          titre: string;
+          date_evenement: string;
+          date_declaration: string;
+          zone_id: string | null;
+          lieu: string | null;
+          description: string;
+          date_investigation: string | null;
+          investigateur_id: string | null;
+          cinq_pourquoi: string[] | null;
+          at_liee_id: string | null;
+          date_cloture: string | null;
+          validateur_cloture_id: string | null;
+          lecons_retenues: string | null;
+          declarant_nom: string;
+          declarant_poste: string;
+          declaration_cpam: boolean;
+          declaration_it: boolean;
+          date_cpam: string | null;
+          date_it: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database['public']['Tables']['dossiers_accidents']['Row'],
+          'id' | 'numero' | 'created_at' | 'updated_at'
+        > & { numero?: string };
+        Update: Partial<Database['public']['Tables']['dossiers_accidents']['Insert']>;
+      };
+      accidents_victimes: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          nom: string;
+          prenom: string;
+          poste: string;
+          entreprise: string;
+          anciennete_mois: number;
+          nature_blessure: string;
+          siege_lesion: string;
+          jours_arret: number;
+        };
+        Insert: Omit<Database['public']['Tables']['accidents_victimes']['Row'], 'id'> & { id?: string };
+        Update: Partial<Database['public']['Tables']['accidents_victimes']['Insert']>;
+      };
+      accidents_temoins: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          nom: string;
+          prenom: string;
+          poste: string;
+          declaration: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['accidents_temoins']['Row'], 'id'> & { id?: string };
+        Update: Partial<Database['public']['Tables']['accidents_temoins']['Insert']>;
+      };
+      accidents_actions: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          description: string;
+          categorie: string;
+          responsable_id: string | null;
+          date_echeance: string;
+          date_realisation: string | null;
+          statut: string;
+          commentaire: string | null;
+          priorite: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<Database['public']['Tables']['accidents_actions']['Row'], 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Database['public']['Tables']['accidents_actions']['Insert']>;
+      };
+      accidents_causes: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          type: string;
+          description: string;
+          parent_ids: string[];
+          action_corrective_id: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['accidents_causes']['Row'], 'id'> & { id?: string };
+        Update: Partial<Database['public']['Tables']['accidents_causes']['Insert']>;
+      };
     };
     Views: {
       [_ in never]: never;
@@ -271,6 +366,12 @@ export interface Database {
       type_mesure_hierarchie: 'ELIMINATION' | 'SUBSTITUTION' | 'CONTROLE_TECHNIQUE' | 'CONTROLE_ADMINISTRATIF' | 'EPI';
       statut_action_risque: 'PLANIFIEE' | 'EN_COURS' | 'REALISEE' | 'VERIFIEE';
       type_cotation: 'INITIALE' | 'INTERMEDIAIRE' | 'RESIDUELLE';
+      type_evenement_accident: 'FATAL' | 'GRAVE' | 'BENIN' | 'PRESQU_ACCIDENT' | 'SITUATION_DANGEREUSE' | 'OBSERVATION';
+      statut_dossier_accident: 'SIGNALE' | 'DECLARE' | 'EN_INVESTIGATION' | 'PLAN_ACTIONS' | 'CLOTURE';
+      statut_action_accident: 'A_FAIRE' | 'EN_COURS' | 'REALISEE' | 'EN_RETARD';
+      type_cause_accident: 'FAIT_IMMEDIAT' | 'CAUSE_INTERMEDIAIRE' | 'CAUSE_PROFONDE';
+      categorie_action_accident: 'TECHNIQUE' | 'ORGANISATIONNELLE' | 'HUMAINE' | 'FORMATION' | 'PROCEDURE' | 'EPI';
+      priorite_action_accident: 'HAUTE' | 'NORMALE' | 'BASSE';
     };
   };
 }

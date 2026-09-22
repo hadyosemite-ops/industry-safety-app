@@ -15,10 +15,16 @@ import {
   LABELS_CATEGORIE_ACTION, LABELS_ACTION_STATUT,
 } from '../types';
 import { BadgeStatut } from './DossierCard';
+import { useAuth } from '@/contexts/AuthContext';
+import * as dossierService from '../services/dossierService';
+import * as actionService from '../services/actionService';
+import * as utilisateursService from '@/modules/admin/services/utilisateursService';
+
+interface UtilisateurOption { id: string; nom: string; prenom: string; }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function genId() { return Math.random().toString(36).slice(2, 10); }
+function genId() { return crypto.randomUUID(); }
 
 // ── Section accordéon ─────────────────────────────────────────────────────────
 
@@ -658,25 +664,35 @@ function CinqPourquoi({
   pourquois: string[];
   onChange: (p: string[]) => void;
 }) {
-  function update(i: number, val: string) {
-    const next = [...pourquois];
-    next[i] = val;
-    onChange(next);
+  // Buffer local + sauvegarde à la perte de focus (chaque appel persiste
+  // réellement en base désormais — voir LeconsRetenues pour le même motif).
+  const [lignesLocales, setLignesLocales] = useState<string[]>(
+    pourquois.length > 0 ? pourquois : Array(5).fill(''),
+  );
+  useEffect(() => {
+    setLignesLocales(pourquois.length > 0 ? pourquois : Array(5).fill(''));
+  }, [pourquois]);
+
+  function updateLocal(i: number, val: string) {
+    setLignesLocales(prev => prev.map((p, idx) => idx === i ? val : p));
   }
 
-  const lignes = pourquois.length > 0 ? pourquois : Array(5).fill('');
+  function persister(i: number) {
+    if (lignesLocales[i] !== (pourquois[i] ?? '')) onChange(lignesLocales);
+  }
 
   return (
     <div className="space-y-3">
       <p className="text-xs text-[color:var(--text-muted)]">Méthode simplifiée — adaptée aux accidents bénins et presqu'accidents.</p>
-      {lignes.map((p, i) => (
+      {lignesLocales.map((p, i) => (
         <div key={i} className="flex items-start gap-3">
           <div className="w-7 h-7 rounded-full bg-[#0077aa] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
             {i + 1}
           </div>
           <textarea
             value={p}
-            onChange={e => update(i, e.target.value)}
+            onChange={e => updateLocal(i, e.target.value)}
+            onBlur={() => persister(i)}
             placeholder={`Pourquoi ${i + 1} ? → …`}
             rows={2}
             className="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-strong)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[rgba(0,212,255,0.35)] resize-none"
@@ -703,9 +719,10 @@ const PRIORITE_COLORS = {
 };
 
 function PlanActions({
-  actions, onChange,
+  actions, utilisateurs, onChange,
 }: {
   actions: ActionCorrective[];
+  utilisateurs: UtilisateurOption[];
   onChange: (a: ActionCorrective[]) => void;
 }) {
   const [adding, setAdding] = useState(false);
@@ -714,12 +731,14 @@ function PlanActions({
   });
 
   function addAction() {
-    if (!form.description || !form.responsable || !form.date_echeance) return;
+    if (!form.description || !form.responsable_id || !form.date_echeance) return;
+    const responsable = utilisateurs.find(u => u.id === form.responsable_id);
     const action: ActionCorrective = {
       id: genId(),
       description: form.description!,
       categorie: form.categorie as CategorieAction,
-      responsable: form.responsable!,
+      responsable_id: form.responsable_id,
+      responsable_nom: responsable ? `${responsable.prenom} ${responsable.nom}` : undefined,
       date_echeance: form.date_echeance!,
       statut: form.statut as StatutAction,
       priorite: form.priorite as 'HAUTE' | 'NORMALE' | 'BASSE',
@@ -787,7 +806,7 @@ function PlanActions({
                 </span>
                 <span className="text-xs text-[color:var(--text-muted)]">{LABELS_CATEGORIE_ACTION[action.categorie]}</span>
                 <span className="text-xs text-[color:var(--text-muted)] flex items-center gap-1">
-                  <User size={10} />{action.responsable}
+                  <User size={10} />{action.responsable_nom ?? '—'}
                 </span>
                 <span className="text-xs text-[color:var(--text-muted)] flex items-center gap-1">
                   <Calendar size={10} />{action.date_echeance}
@@ -828,9 +847,12 @@ function PlanActions({
               <option value="NORMALE">Normale</option>
               <option value="BASSE">Basse</option>
             </select>
-            <input type="text" placeholder="Responsable *" value={form.responsable || ''}
-              onChange={e => setForm(f => ({ ...f, responsable: e.target.value }))}
-              className="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg text-sm focus:outline-none" />
+            <select value={form.responsable_id || ''}
+              onChange={e => setForm(f => ({ ...f, responsable_id: e.target.value }))}
+              className="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg text-sm focus:outline-none">
+              <option value="">Responsable *</option>
+              {utilisateurs.map(u => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
+            </select>
             <input type="date" value={form.date_echeance || ''} placeholder="Échéance *"
               onChange={e => setForm(f => ({ ...f, date_echeance: e.target.value }))}
               className="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded-lg text-sm focus:outline-none" />
@@ -862,11 +884,18 @@ function LeconsRetenues({
   lecons: string;
   onChange: (l: string) => void;
 }) {
+  // Sauvegarde à la perte de focus plutôt qu'à chaque frappe — chaque
+  // appel persiste réellement en base désormais (ce n'était qu'un état
+  // local en mémoire à l'époque des données de démo).
+  const [valeur, setValeur] = useState(lecons);
+  useEffect(() => { setValeur(lecons); }, [lecons]);
+
   return (
     <div>
       <textarea
-        value={lecons}
-        onChange={e => onChange(e.target.value)}
+        value={valeur}
+        onChange={e => setValeur(e.target.value)}
+        onBlur={() => { if (valeur !== lecons) onChange(valeur); }}
         rows={3}
         placeholder="Décrivez les leçons apprises et les bonnes pratiques à diffuser à l'ensemble des équipes…"
         className="w-full px-3.5 py-2.5 bg-[var(--bg-input)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[rgba(0,212,255,0.35)] resize-none"
@@ -888,17 +917,53 @@ const WORKFLOW: DossierAccident['statut'][] = [
 ];
 
 export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps) {
+  const { profile } = useAuth();
   const [local, setLocal] = useState<DossierAccident>(dossier);
+  const [utilisateurs, setUtilisateurs] = useState<UtilisateurOption[]>([]);
+  const [avancement, setAvancement] = useState(false);
 
-  function update(patch: Partial<DossierAccident>) {
-    const next = { ...local, ...patch };
+  useEffect(() => {
+    if (!profile?.site_id) return;
+    utilisateursService.listerUtilisateurs(profile.site_id).then(({ data }) => {
+      if (data) setUtilisateurs(data);
+    });
+  }, [profile?.site_id]);
+
+  function appliquerMaj(next: DossierAccident) {
     setLocal(next);
     onUpdate(next);
   }
 
-  function avancerStatut() {
+  async function persisterChamps(patch: dossierService.MettreAJourDossierPayload) {
+    const { data } = await dossierService.mettreAJourDossier(local.id, patch);
+    if (data) appliquerMaj(data);
+  }
+
+  async function persisterActions(actions: ActionCorrective[]) {
+    const { data } = await actionService.remplacerActions(local.id, actions);
+    if (data) appliquerMaj({ ...local, actions: data });
+  }
+
+  async function persisterCauses(arbre_causes: NoeudCause[]) {
+    const { data } = await dossierService.remplacerCauses(local.id, arbre_causes);
+    if (data) appliquerMaj({ ...local, arbre_causes: data });
+  }
+
+  function basculerModeInvestigation() {
+    // Bascule entre les deux méthodes d'investigation — on efface les deux
+    // dans tous les cas (une seule méthode est affichée à la fois selon
+    // `useArbre`, l'autre repart donc de zéro à la prochaine bascule).
+    void persisterCauses([]);
+    void persisterChamps({ cinq_pourquoi: [] });
+  }
+
+  async function avancerStatut() {
     const idx = WORKFLOW.indexOf(local.statut);
-    if (idx < WORKFLOW.length - 1) update({ statut: WORKFLOW[idx + 1] });
+    if (idx >= WORKFLOW.length - 1) return;
+    setAvancement(true);
+    const { data } = await dossierService.changerStatutDossier(local.id, WORKFLOW[idx + 1], profile?.id);
+    setAvancement(false);
+    if (data) appliquerMaj(data);
   }
 
   const peutAvancer = local.statut !== 'CLOTURE';
@@ -1017,22 +1082,19 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
           {useArbre ? (
             <ArbreDesCauses
               nœuds={local.arbre_causes}
-              onChange={arbre_causes => update({ arbre_causes })}
+              onChange={arbre_causes => void persisterCauses(arbre_causes)}
             />
           ) : (
             <CinqPourquoi
               pourquois={local.cinq_pourquoi || []}
-              onChange={cinq_pourquoi => update({ cinq_pourquoi })}
+              onChange={cinq_pourquoi => void persisterChamps({ cinq_pourquoi })}
             />
           )}
           {/* Bouton pour basculer */}
           <div className="mt-4">
             <button
               type="button"
-              onClick={() => {
-                if (useArbre) update({ arbre_causes: [], cinq_pourquoi: [] });
-                else update({ cinq_pourquoi: [], arbre_causes: [] });
-              }}
+              onClick={basculerModeInvestigation}
               className="text-xs text-[color:var(--text-muted)] hover:text-[color:var(--badge-navy-text)] underline"
             >
               Basculer vers {useArbre ? '5 Pourquoi' : "l'arbre des causes"}
@@ -1054,7 +1116,8 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
           }>
           <PlanActions
             actions={local.actions}
-            onChange={actions => update({ actions })}
+            utilisateurs={utilisateurs}
+            onChange={actions => void persisterActions(actions)}
           />
         </Section>
 
@@ -1062,7 +1125,7 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
         <Section title="Leçons retenues & Diffusion" icon={Lightbulb} defaultOpen={false}>
           <LeconsRetenues
             lecons={local.lecons_retenues || ''}
-            onChange={lecons_retenues => update({ lecons_retenues })}
+            onChange={lecons_retenues => void persisterChamps({ lecons_retenues })}
           />
         </Section>
 
@@ -1071,11 +1134,12 @@ export function DossierDetail({ dossier, onBack, onUpdate }: DossierDetailProps)
           <div className="sticky bottom-20 flex justify-end">
             <button
               type="button"
-              onClick={avancerStatut}
-              className="flex items-center gap-2 px-5 py-3 bg-[#0077aa] text-white font-semibold text-sm rounded-xl shadow-lg hover:bg-[#005f88] transition-colors"
+              onClick={() => void avancerStatut()}
+              disabled={avancement}
+              className="flex items-center gap-2 px-5 py-3 bg-[#0077aa] text-white font-semibold text-sm rounded-xl shadow-lg hover:bg-[#005f88] transition-colors disabled:opacity-60"
             >
               <Edit3 size={15} />
-              Passer à : {LABELS_STATUT[statutSuivant]}
+              {avancement ? 'Mise à jour…' : `Passer à : ${LABELS_STATUT[statutSuivant]}`}
               {statutSuivant === 'CLOTURE' && <CheckCircle2 size={15} />}
             </button>
           </div>

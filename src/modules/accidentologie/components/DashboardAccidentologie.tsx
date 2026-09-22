@@ -8,13 +8,14 @@ import {
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { DOSSIERS_DEMO, KPIS_DEMO, HISTORIQUE_TF, OBJECTIF_TF } from '../data/demo.data';
+import { HISTORIQUE_TF, OBJECTIF_TF } from '../data/demo.data';
 import type { DossierAccident, TypeEvenement, StatutDossier } from '../types';
 import { LABELS_TYPE, ICONES_TYPE } from '../types';
 import { DossierCard, BadgeStatut } from './DossierCard';
 import { DossierDetail } from './DossierDetail';
 import { DeclarationWizard } from './DeclarationWizard';
 import { ModuleHeader } from '@/components/ui/ModuleHeader';
+import { useAccidentologieDashboardData } from '../hooks/useAccidentologieDashboardData';
 
 const ACCIDENTS_VUE_KEY = 'hse-accidents-vue';
 
@@ -211,11 +212,11 @@ function SparklineTF() {
 // ── Dashboard principal ───────────────────────────────────────────────────────
 
 export function DashboardAccidentologie() {
+  const { dossiers, setDossiers, kpis, loading, refetch } = useAccidentologieDashboardData();
   const [onglet,       setOnglet]      = useState<Onglet>('tous');
   const [recherche,    setRecherche]   = useState('');
   const [dossierOuvert, setDossierOuvert] = useState<DossierAccident | null>(null);
   const [showWizard,   setShowWizard]  = useState(false);
-  const [dossiers,     setDossiers]    = useState<DossierAccident[]>(DOSSIERS_DEMO);
   const [vue, setVue] = useState<'carte' | 'liste'>(
     () => (typeof window !== 'undefined' && window.localStorage.getItem(ACCIDENTS_VUE_KEY) === 'liste') ? 'liste' : 'carte',
   );
@@ -224,8 +225,6 @@ export function DashboardAccidentologie() {
     setVue(next);
     window.localStorage.setItem(ACCIDENTS_VUE_KEY, next);
   }
-
-  const kpis = KPIS_DEMO;
 
 
   // Filtrage
@@ -269,11 +268,12 @@ export function DashboardAccidentologie() {
   function handleDossierUpdate(updated: DossierAccident) {
     setDossiers(prev => prev.map(d => d.id === updated.id ? updated : d));
     setDossierOuvert(updated);
+    void refetch(); // resynchronise les KPI (statut/actions modifiés)
   }
 
-  function handleNouveauDossier(dossier: DossierAccident) {
-    setDossiers(prev => [dossier, ...prev]);
+  function handleNouveauDossier() {
     setShowWizard(false);
+    void refetch();
   }
 
   // ── Vue détail dossier ──
@@ -309,6 +309,10 @@ export function DashboardAccidentologie() {
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
 
+        {loading || !kpis ? (
+          <div className="card p-12 text-center text-[color:var(--text-muted)] text-sm">Chargement des dossiers…</div>
+        ) : (
+        <>
         {/* ── KPIs ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
@@ -498,6 +502,8 @@ export function DashboardAccidentologie() {
           <div className="pb-20">
             <DossiersListe dossiers={dossiersFiltres} onSelect={setDossierOuvert} />
           </div>
+        )}
+        </>
         )}
 
       </main>

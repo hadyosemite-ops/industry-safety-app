@@ -78,7 +78,8 @@ export interface ActionCorrective {
   id: string;
   description: string;
   categorie: CategorieAction;
-  responsable: string;
+  responsable_id?: string | null;
+  responsable_nom?: string;         // dénormalisé (jointure utilisateurs)
   date_echeance: string;            // ISO date
   date_realisation?: string;        // remplie quand REALISEE
   statut: StatutAction;
@@ -90,6 +91,7 @@ export interface ActionCorrective {
 
 export interface DossierAccident {
   id: string;
+  site_id?: string;
   numero: string;                   // ex. "ACC-2026-0042"
   type_evenement: TypeEvenement;
   statut: StatutDossier;
@@ -98,8 +100,9 @@ export interface DossierAccident {
   titre: string;
   date_evenement: string;           // ISO datetime
   date_declaration: string;         // ISO datetime
+  zone_id?: string | null;
   lieu: string;                     // zone / atelier
-  zone_code: string;                // ex. "Zone B - Packaging"
+  zone_code: string;                // ex. "Zone B - Packaging" (dénormalisé, jointure zones)
   description: string;
 
   // Victimes / témoins
@@ -108,7 +111,8 @@ export interface DossierAccident {
 
   // Investigation
   date_investigation?: string;
-  investigateur?: string;
+  investigateur_id?: string | null;
+  investigateur?: string;           // dénormalisé (jointure utilisateurs)
   arbre_causes: NoeudCause[];
   cinq_pourquoi?: string[];         // méthode alternative pour bénins
 
@@ -121,7 +125,8 @@ export interface DossierAccident {
 
   // Clôture
   date_cloture?: string;
-  validateur_cloture?: string;
+  validateur_cloture_id?: string | null;
+  validateur_cloture?: string;      // dénormalisé (jointure utilisateurs)
   lecons_retenues?: string;
 
   // Déclarant
@@ -208,6 +213,18 @@ export function delaiLegal(type: TypeEvenement): number | null {
   if (type === 'FATAL') return 24;
   if (type === 'GRAVE') return 48;
   return null;
+}
+
+// ── Résultats des services ────────────────────────────────────────────────────
+
+export interface ServiceError {
+  code: string;
+  message: string;
+}
+
+export interface ServiceResult<T> {
+  data?: T;
+  error?: ServiceError;
 }
 
 // Couleurs par type d'événement

@@ -55,6 +55,8 @@ export interface CreateSitePayload {
   adresse: string;
   code_site: string;
   actif?: boolean;
+  effectif?: number | null;
+  heures_travaillees_mensuelles?: number | null;
 }
 
 export type UpdateSitePayload = Partial<CreateSitePayload>;

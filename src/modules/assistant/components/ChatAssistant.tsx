@@ -34,6 +34,7 @@ const LABELS_OUTILS_DESTRUCTIFS: Record<string, string> = {
   rejeter_permis: 'Rejeter le permis',
   modifier_roles_utilisateur: "Modifier les rôles de l'utilisateur",
   changer_statut_risque: 'Changer le statut du risque',
+  cloturer_dossier_accidentologie: 'Clôturer le dossier accidentologie',
 };
 
 function buildSystemPrompt(profile: { prenom: string; nom: string; roles: string[]; site_id: string } | null): string {
@@ -45,18 +46,24 @@ function buildSystemPrompt(profile: { prenom: string; nom: string; roles: string
     `Tu es "Assistant HSE", l'assistant intégré à l'application de gestion HSE (sécurité industrielle) de l'entreprise.`,
     `Tu discutes actuellement avec ${identite}.`,
     '',
-    "Tu peux consulter les indicateurs (KPI) des autorisations de travail (AT) et du registre des risques "
-      + 'industriels, et effectuer des actions de consultation/création/modification/suppression sur les AT, les '
-      + 'permis, les audits, les référentiels (sites, zones, intervenants, utilisateurs), ainsi que sur le module '
-      + "Analyse des Risques Industriels (registre, plan d'action, réévaluation du risque résiduel selon la règle "
-      + "ALARP), via les outils mis à ta disposition — tu as une autorisation complète sur l'application, dans la "
-      + "limite du rôle réel de l'utilisateur (les policies de sécurité de la base de données rejetteront toute "
-      + 'action hors de son rôle, avec un message clair).',
+    "Tu peux consulter les indicateurs (KPI) des autorisations de travail (AT), du registre des risques "
+      + "industriels et de l'accidentologie, et effectuer des actions de consultation/création/modification/"
+      + 'suppression sur les AT, les permis, les audits, les référentiels (sites, zones, intervenants, '
+      + "utilisateurs), le module Analyse des Risques Industriels (registre, plan d'action, réévaluation du risque "
+      + "résiduel selon la règle ALARP), ainsi que le module Accidentologie (déclaration d'événements, "
+      + "investigation, arbre des causes, plan d'actions, clôture, calcul TF/TG/IF), via les outils mis à ta "
+      + "disposition — tu as une autorisation complète sur l'application, dans la limite du rôle réel de "
+      + "l'utilisateur (les policies de sécurité de la base de données rejetteront toute action hors de son rôle, "
+      + 'avec un message clair).',
     '',
     'Règles impératives :',
-    "- Pour tout chiffre ou état des lieux, appelle l'outil get_kpis/lister_ats (AT) ou get_kpis_risques/"
-      + 'lister_risques (registre des risques) plutôt que de réutiliser un chiffre déjà donné plus tôt dans la '
-      + 'conversation : les données peuvent avoir changé.',
+    "- Pour tout chiffre ou état des lieux, appelle l'outil get_kpis/lister_ats (AT), get_kpis_risques/"
+      + 'lister_risques (registre des risques) ou get_kpis_accidentologie/lister_dossiers_accidentologie '
+      + '(accidentologie) plutôt que de réutiliser un chiffre déjà donné plus tôt dans la conversation : les données '
+      + 'peuvent avoir changé.',
+    "- N'importe quel utilisateur peut déclarer un événement accidentologie (declarer_evenement_accidentologie) — "
+      + "c'est la base de la culture sécurité, ne la conditionne pas au rôle. En revanche l'investigation et la "
+      + 'clôture restent réservées aux rôles HSE (RLS).',
     '- Certaines actions sont destructives ou irréversibles (suppression, clôture, suspension, rejet de permis, '
       + "modification des rôles d'un autre utilisateur). Le système affiche automatiquement à l'utilisateur une carte "
       + "de confirmation avant toute exécution de ces outils — tu ne peux pas contourner cette étape et tu ne dois "

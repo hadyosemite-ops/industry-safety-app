@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   AlertTriangle, ChevronRight, ChevronLeft, X, Check,
   MapPin, Clock, User, Plus, Trash2, FileText,
@@ -9,12 +9,11 @@ import { LABELS_TYPE, ICONES_TYPE, COULEURS_TYPE } from '../types';
 import { format } from 'date-fns';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/ToastProvider';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+import * as dossierService from '../services/dossierService';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function genId() {
-  return Math.random().toString(36).slice(2, 10);
-}
+interface ZoneOption { id: string; nom: string; code_zone: string; }
 
 // ── Étape 1 — Type + gravité ──────────────────────────────────────────────────
 
@@ -100,25 +99,17 @@ interface Step2Data {
   titre: string;
   date_evenement: string;
   lieu: string;
-  zone_code: string;
+  zone_id: string;
   description: string;
   victimes: Omit<Victime, 'id'>[];
 }
 
-const ZONES = [
-  'Zone A - Production',
-  'Zone B - Packaging',
-  'Zone C - Énergie',
-  'Zone D - Chimie',
-  'Zone E - Logistique',
-  'Zone F - Administration',
-];
-
 function Step2Description({
-  data, onChange,
+  data, onChange, zones,
 }: {
   data: Step2Data;
   onChange: (d: Step2Data) => void;
+  zones: ZoneOption[];
 }) {
   function addVictime() {
     onChange({
@@ -176,12 +167,12 @@ function Step2Description({
             <MapPin size={13} className="inline mr-1" />Zone *
           </label>
           <select
-            value={data.zone_code}
-            onChange={e => onChange({ ...data, zone_code: e.target.value })}
+            value={data.zone_id}
+            onChange={e => onChange({ ...data, zone_id: e.target.value })}
             className="w-full px-3.5 py-2.5 bg-[var(--bg-input)] border border-[var(--border-strong)] text-[var(--text-primary)] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[rgba(0,212,255,0.35)]"
           >
             <option value="">Sélectionner…</option>
-            {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
+            {zones.map(z => <option key={z.id} value={z.id}>{z.code_zone ? `${z.code_zone} - ${z.nom}` : z.nom}</option>)}
           </select>
         </div>
       </div>
@@ -379,14 +370,16 @@ function Step3TemoinsDeclarant({
 // ── Étape 4 — Récapitulatif ───────────────────────────────────────────────────
 
 function Step4Recap({
-  step1, step2, step3,
+  step1, step2, step3, zones,
 }: {
   step1: Step1Data;
   step2: Step2Data;
   step3: Step3Data;
+  zones: ZoneOption[];
 }) {
   if (!step1.type_evenement) return null;
   const c = COULEURS_TYPE[step1.type_evenement];
+  const zoneLabel = zones.find(z => z.id === step2.zone_id);
 
   return (
     <div className="space-y-4">
@@ -402,7 +395,7 @@ function Step4Recap({
 
       <div className="bg-[var(--bg-hover)] border border-[var(--border)] rounded-xl divide-y divide-[color:var(--border)]">
         <RecapRow icon={<Clock size={13} />} label="Date" value={step2.date_evenement ? format(new Date(step2.date_evenement), 'dd/MM/yyyy HH:mm') : '—'} />
-        <RecapRow icon={<MapPin size={13} />} label="Zone" value={step2.zone_code || '—'} />
+        <RecapRow icon={<MapPin size={13} />} label="Zone" value={zoneLabel ? (zoneLabel.code_zone ? `${zoneLabel.code_zone} - ${zoneLabel.nom}` : zoneLabel.nom) : '—'} />
         <RecapRow icon={<MapPin size={13} />} label="Lieu précis" value={step2.lieu || '—'} />
         <RecapRow icon={<User size={13} />} label="Déclarant" value={`${step3.declarant_nom} — ${step3.declarant_poste}`} />
         <RecapRow icon={<FileText size={13} />} label="Victimes" value={step2.victimes.length > 0 ? step2.victimes.map(v => `${v.prenom} ${v.nom}`).join(', ') : 'Aucune'} />
@@ -456,51 +449,60 @@ interface DeclarationWizardProps {
 
 export function DeclarationWizard({ onCancel, onSoumettre }: DeclarationWizardProps) {
   const toast = useToast();
+  const { profile } = useAuth();
   const [etape, setEtape] = useState(1);
+  const [zones, setZones] = useState<ZoneOption[]>([]);
+  const [soumission, setSoumission] = useState(false);
 
   const [step1, setStep1] = useState<Step1Data>({ type_evenement: '' });
   const [step2, setStep2] = useState<Step2Data>({
     titre: '', date_evenement: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-    lieu: '', zone_code: '', description: '', victimes: [],
+    lieu: '', zone_id: '', description: '', victimes: [],
   });
   const [step3, setStep3] = useState<Step3Data>({
     declarant_nom: '', declarant_poste: '', temoins: [], at_liee_numero: '',
   });
 
+  useEffect(() => {
+    if (!profile?.site_id) return;
+    supabase
+      .from('zones')
+      .select('id, nom, code_zone')
+      .eq('site_id', profile.site_id)
+      .order('nom')
+      .then(({ data }) => setZones(data ?? []));
+  }, [profile?.site_id]);
+
   const peutAvancer =
     etape === 1 ? !!step1.type_evenement :
-    etape === 2 ? !!(step2.titre && step2.date_evenement && step2.zone_code && step2.description) :
+    etape === 2 ? !!(step2.titre && step2.date_evenement && step2.zone_id && step2.description) :
     etape === 3 ? !!(step3.declarant_nom && step3.declarant_poste) :
     true;
 
-  function soumettre() {
-    if (!step1.type_evenement) return;
+  async function soumettre() {
+    if (!step1.type_evenement || !profile?.site_id || soumission) return;
+    setSoumission(true);
 
-    const now = new Date().toISOString();
-    const annee = new Date().getFullYear();
-    const num = Math.floor(Math.random() * 900) + 100;
-
-    const dossier: DossierAccident = {
-      id: genId(),
-      numero: `ACC-${annee}-${String(num).padStart(4, '0')}`,
+    const { data: dossier, error } = await dossierService.creerDossier({
+      site_id: profile.site_id,
       type_evenement: step1.type_evenement,
-      statut: 'SIGNALE',
       titre: step2.titre,
       date_evenement: new Date(step2.date_evenement).toISOString(),
-      date_declaration: now,
+      zone_id: step2.zone_id || null,
       lieu: step2.lieu,
-      zone_code: step2.zone_code,
       description: step2.description,
       declarant_nom: step3.declarant_nom,
       declarant_poste: step3.declarant_poste,
-      victimes: step2.victimes.map(v => ({ ...v, id: genId() })),
-      temoins: step3.temoins.map(t => ({ ...t, id: genId() })),
+      victimes: step2.victimes,
+      temoins: step3.temoins,
       at_liee_numero: step3.at_liee_numero || undefined,
-      arbre_causes: [],
-      actions: [],
-      declaration_cpam: false,
-      declaration_it: false,
-    };
+    });
+
+    setSoumission(false);
+    if (error || !dossier) {
+      toast.error(error?.message ?? "Impossible d'enregistrer la déclaration.");
+      return;
+    }
     onSoumettre(dossier);
     toast.success(`Événement ${dossier.numero} déclaré avec succès.`);
   }
@@ -552,9 +554,9 @@ export function DeclarationWizard({ onCancel, onSoumettre }: DeclarationWizardPr
         {/* Contenu étape */}
         <div className="card p-6">
           {etape === 1 && <Step1TypeGravite data={step1} onChange={setStep1} />}
-          {etape === 2 && <Step2Description data={step2} onChange={setStep2} />}
+          {etape === 2 && <Step2Description data={step2} onChange={setStep2} zones={zones} />}
           {etape === 3 && <Step3TemoinsDeclarant data={step3} onChange={setStep3} />}
-          {etape === 4 && <Step4Recap step1={step1} step2={step2} step3={step3} />}
+          {etape === 4 && <Step4Recap step1={step1} step2={step2} step3={step3} zones={zones} />}
         </div>
 
         {/* Navigation */}
@@ -586,10 +588,14 @@ export function DeclarationWizard({ onCancel, onSoumettre }: DeclarationWizardPr
             <button
               type="button"
               onClick={soumettre}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold shadow-sm transition-colors"
+              disabled={soumission}
+              className={clsx(
+                'flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold shadow-sm transition-colors',
+                soumission ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600',
+              )}
             >
               <AlertTriangle size={16} />
-              Déclarer l'événement
+              {soumission ? 'Envoi…' : "Déclarer l'événement"}
             </button>
           )}
         </div>

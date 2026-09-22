@@ -162,6 +162,10 @@ function SiteModal({
   const [adresse, setAdresse] = useState(site?.adresse ?? '');
   const [codeSite, setCodeSite] = useState(site?.code_site ?? '');
   const [actif, setActif] = useState(site?.actif ?? true);
+  const [effectif, setEffectif] = useState(site?.effectif != null ? String(site.effectif) : '');
+  const [heuresMensuelles, setHeuresMensuelles] = useState(
+    site?.heures_travaillees_mensuelles != null ? String(site.heures_travaillees_mensuelles) : '',
+  );
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -177,7 +181,14 @@ function SiteModal({
 
     setPending(true);
     try {
-      await onSave({ nom: nom.trim(), adresse: adresse.trim(), code_site: codeSite.trim(), actif });
+      await onSave({
+        nom: nom.trim(),
+        adresse: adresse.trim(),
+        code_site: codeSite.trim(),
+        actif,
+        effectif: effectif.trim() ? Number(effectif) : null,
+        heures_travaillees_mensuelles: heuresMensuelles.trim() ? Number(heuresMensuelles) : null,
+      });
     } finally {
       setPending(false);
     }
@@ -233,6 +244,29 @@ function SiteModal({
                 placeholder="Adresse complète du site"
               />
             </FormField>
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Effectif" hint="Pour l'Indice de Fréquence">
+                <input
+                  type="number"
+                  min={0}
+                  className="form-input"
+                  value={effectif}
+                  onChange={e => setEffectif(e.target.value)}
+                  placeholder="Ex : 968"
+                />
+              </FormField>
+              <FormField label="Heures travaillées / mois" hint="Moyenne mensuelle">
+                <input
+                  type="number"
+                  min={0}
+                  className="form-input"
+                  value={heuresMensuelles}
+                  onChange={e => setHeuresMensuelles(e.target.value)}
+                  placeholder="Ex : 59500"
+                />
+              </FormField>
+            </div>
 
             <label className="flex items-center gap-2.5 cursor-pointer select-none">
               <input

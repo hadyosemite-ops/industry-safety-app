@@ -99,6 +99,10 @@ export interface Site {
   adresse: string;
   code_site: string;
   actif: boolean;
+  /** Effectif du site — utilisé pour le calcul de l'Indice de Fréquence (accidentologie). */
+  effectif?: number | null;
+  /** Heures travaillées mensuelles moyennes — utilisées pour extrapoler le Taux de Fréquence/Gravité (accidentologie). */
+  heures_travaillees_mensuelles?: number | null;
 }
 
 export interface Zone {
