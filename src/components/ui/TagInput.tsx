@@ -73,14 +73,15 @@ export function TagInput({ value, onChange, placeholder, suggestions = [] }: Tag
         )}
       </div>
 
-      {/* Suggestions dropdown */}
+      {/* Suggestions dropdown — fond opaque (bg-elevated) : un fond translucide comme
+          .card laisse transparaître le contenu derrière et nuit à la lisibilité. */}
       {showSugg && filtered.length > 0 && (
-        <div className="absolute z-20 top-full mt-1 w-full card
-                        shadow-card-hover max-h-40 overflow-y-auto">
+        <div className="absolute z-20 top-full mt-1 w-full max-h-40 overflow-y-auto rounded-xl
+                        border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-lg py-1">
           {filtered.map(s => (
             <button key={s} type="button"
               onMouseDown={() => addTag(s)}
-              className="w-full px-3 py-2 text-sm text-left text-[color:var(--text-secondary)] hover:bg-[rgba(0,212,255,0.06)] first:rounded-t-lg last:rounded-b-lg">
+              className="w-full px-3 py-2 text-sm text-left text-[color:var(--text-secondary)] hover:bg-[var(--bg-hover)]">
               {s}
             </button>
           ))}
