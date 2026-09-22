@@ -8,7 +8,10 @@ import type {
   RisqueIndustriel, PhaseRisque, StatutRisque, NiveauCriticite,
   MoyenProtection, ServiceResult,
 } from '../types';
-import { ErreurMetierRisque } from '../types';
+import {
+  ErreurMetierRisque, calculerTauxCritiquesMaitrises, calculerTauxClotureDelais,
+  actionEstEnRetard, actionEcheanceProche,
+} from '../types';
 import { toActionRisque } from './actionService';
 
 const SELECT_RISQUE = `
@@ -265,4 +268,45 @@ export async function changerStatutRisque(id: string, statut: StatutRisque): Pro
   } catch (err) {
     return { error: { code: 'UPDATE_ERROR', message: (err as Error).message } };
   }
+}
+
+// ------------------------------------------------------------
+// KPI — résumé pour l'outil `get_kpis_risques` de l'Assistant HSE
+// (mêmes calculs que DashboardAnalyseRisques.tsx, centralisés ici pour
+// être réutilisables hors composant React).
+// ------------------------------------------------------------
+
+export interface KpiSummaryRisques {
+  nbTotal: number;
+  nbOuverts: number;
+  nbCritiques: number;
+  pctCritiquesMaitrises: number;
+  tauxClotureDelais: number;
+  scoreMoyen: number;
+  nbActionsEnRetard: number;
+  nbActionsEcheanceProche: number;
+}
+
+export async function calculerKpisRisques(): Promise<ServiceResult<KpiSummaryRisques>> {
+  const { data, error } = await listerRisques();
+  if (error || !data) {
+    return { error: error ?? { code: 'FETCH_ERROR', message: 'Impossible de charger le registre des risques.' } };
+  }
+
+  const toutesActions = data.flatMap(r => r.actions ?? []);
+  const scores = data.map(r => r.score_residuel ?? r.score_initial);
+  const scoreMoyen = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+
+  return {
+    data: {
+      nbTotal: data.length,
+      nbOuverts: data.filter(r => r.statut !== 'CLOTURE').length,
+      nbCritiques: data.filter(r => (r.niveau_residuel ?? r.niveau_initial) === 'CRITIQUE').length,
+      pctCritiquesMaitrises: calculerTauxCritiquesMaitrises(data),
+      tauxClotureDelais: calculerTauxClotureDelais(toutesActions),
+      scoreMoyen,
+      nbActionsEnRetard: toutesActions.filter(actionEstEnRetard).length,
+      nbActionsEcheanceProche: toutesActions.filter(a => actionEcheanceProche(a)).length,
+    },
+  };
 }
