@@ -493,6 +493,7 @@ function Layout() {
             <Routes>
               <Route path="/"              element={<Navigate to="/at" replace />} />
               <Route path="/at"            element={<ProtectedRoute><DashboardAT /></ProtectedRoute>} />
+              <Route path="/at/nouvelle"   element={<ProtectedRoute><ATCreationWizard /></ProtectedRoute>} />
               <Route path="/accidentologie" element={<ProtectedRoute><DashboardAccidentologie /></ProtectedRoute>} />
               <Route path="/audit"          element={<ProtectedRoute><DashboardAudit /></ProtectedRoute>} />
               <Route path="/prestataires"   element={<ProtectedRoute><DashboardPrestataires /></ProtectedRoute>} />
