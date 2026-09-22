@@ -441,8 +441,12 @@ function ArbreDesCauses({
                   const y  = cy - NODE_H / 2;
                   const isLinked   = linking ? nœuds.find(n => n.id === linking)?.parent_ids.includes(node.id) : false;
                   const isLinking  = linking === node.id;
-                  // Peut-on lier CE nœud vers sa droite ? (seulement si pas FAIT_IMMEDIAT)
-                  const canInitLink = type !== 'FAIT_IMMEDIAT';
+                  // Peut-on lier CE nœud à sa propre cause (colonne de gauche) ? Un nœud
+                  // "Cause profonde" est le point de départ de l'arbre — il n'a pas de
+                  // colonne à sa gauche, donc rien à lier. Les deux autres types doivent
+                  // au contraire pouvoir initier la liaison (c'est justement le nœud
+                  // "Fait immédiat" qui va chercher sa "Cause intermédiaire", pas l'inverse).
+                  const canInitLink = type !== 'CAUSE_PROFONDE';
                   return (
                     <div
                       key={node.id}
