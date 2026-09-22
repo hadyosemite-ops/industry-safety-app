@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
-import { ArrowLeft, ArrowRight, Check, Plus, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Plus, X, Sparkles, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import type { RisqueIndustriel, PhaseRisque, MoyenProtection, TypeMesureHierarchie } from '../types';
@@ -14,6 +14,129 @@ import * as risqueService from '../services/risqueService';
 interface ZoneOption { id: string; nom: string; code_zone: string; }
 
 const ETAPES = ['Identification', 'Danger', 'Cotation & protection', 'Revue'] as const;
+
+// ── Listes de choix prédéfinies (analyse du danger) ───────────────────────────
+
+const OPTIONS_DANGER = [
+  'Chute de hauteur', 'Chute de plain-pied', 'Électrisation / Électrocution',
+  'Incendie / Explosion', 'Écrasement par charge suspendue', 'Happement par pièce en mouvement',
+  'Exposition à des produits chimiques', 'Exposition au bruit', 'Exposition aux vibrations',
+  'Ambiance thermique (chaud/froid)', 'Espace confiné', 'Manutention manuelle de charges',
+  'Circulation d\'engins / Collision', 'Projection de particules', 'Exposition aux poussières',
+  'Rayonnements ionisants', 'Travaux en hauteur sur toiture', 'Ensevelissement',
+  'Noyade', 'Coupure / Section par outil tranchant',
+];
+
+const OPTIONS_SITUATION = [
+  'Travail en hauteur sans protection collective', 'Intervention à proximité d\'installations sous tension',
+  'Manipulation de produits chimiques sans EPI adaptés', 'Circulation de piétons en zone de circulation d\'engins',
+  'Intervention en espace confiné', 'Travail à proximité de charges suspendues',
+  'Utilisation d\'un outil/équipement non conforme', 'Coactivité entre plusieurs entreprises',
+  'Intervention par conditions météorologiques dégradées', 'Zone de travail non balisée / signalée',
+  'Absence de consignation avant intervention', 'Travail isolé sans moyen d\'alerte',
+];
+
+const OPTIONS_EVENEMENT = [
+  'Chute de hauteur avec impact au sol', 'Contact avec une pièce sous tension',
+  'Inhalation de vapeurs ou de gaz toxiques', 'Écrasement par chute de charge',
+  'Renversement / collision avec un engin', 'Départ de feu ou explosion',
+  'Coupure profonde', 'Intoxication / asphyxie', 'Effondrement de structure',
+  'Noyade', 'Ensevelissement', 'Projection dans les yeux',
+];
+
+const OPTIONS_CONSEQUENCE = [
+  'Blessure légère (premiers secours)', 'Blessure avec arrêt de travail',
+  'Blessure grave / invalidité permanente', 'Décès', 'Maladie professionnelle',
+  'Atteinte à l\'environnement (pollution)', 'Dommage matériel majeur',
+  'Incendie avec dommages matériels', 'Arrêt de production',
+];
+
+// ── Champ « liste de choix + ajout libre » (combobox) ─────────────────────────
+
+function ComboboxChoix({ label, value, onChange, options, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string;
+}) {
+  const [ouvert, setOuvert] = useState(false);
+  const [optionsPerso, setOptionsPerso] = useState<string[]>([]);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOuvert(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toutesOptions = useMemo(
+    () => [...options, ...optionsPerso.filter(o => !options.includes(o))],
+    [options, optionsPerso],
+  );
+  const recherche = value.trim();
+  const filtrees = recherche
+    ? toutesOptions.filter(o => o.toLowerCase().includes(recherche.toLowerCase()))
+    : toutesOptions;
+  const correspondanceExacte = toutesOptions.some(o => o.toLowerCase() === recherche.toLowerCase());
+
+  function selectionner(v: string) {
+    onChange(v);
+    setOuvert(false);
+  }
+
+  function ajouterPerso() {
+    if (!recherche) return;
+    setOptionsPerso(prev => [...prev, recherche]);
+    setOuvert(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="text-[11px] font-semibold text-[color:var(--text-muted)] uppercase tracking-wide">{label}</label>
+      <div className="relative mt-1">
+        <input
+          type="text"
+          className="w-full border border-[var(--border-strong)] rounded-xl pl-3 pr-8 py-2 text-sm bg-[var(--bg-input)] text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(0,212,255,0.35)]"
+          placeholder={placeholder}
+          value={value}
+          onChange={e => { onChange(e.target.value); setOuvert(true); }}
+          onFocus={() => setOuvert(true)}
+          onKeyDown={e => { if (e.key === 'Enter' && recherche && !correspondanceExacte) { e.preventDefault(); ajouterPerso(); } }}
+        />
+        <button
+          type="button"
+          onClick={() => setOuvert(o => !o)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]"
+          tabIndex={-1}
+        >
+          <ChevronDown size={14} />
+        </button>
+      </div>
+      {ouvert && (filtrees.length > 0 || (recherche && !correspondanceExacte)) && (
+        <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-[var(--border-strong)] bg-[var(--bg-elevated)] shadow-lg py-1">
+          {filtrees.map(o => (
+            <button
+              key={o}
+              type="button"
+              onClick={() => selectionner(o)}
+              className="w-full text-left px-3 py-1.5 text-sm text-[color:var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[color:var(--text-primary)]"
+            >
+              {o}
+            </button>
+          ))}
+          {recherche && !correspondanceExacte && (
+            <button
+              type="button"
+              onClick={ajouterPerso}
+              className="w-full text-left px-3 py-1.5 text-sm font-medium text-[color:var(--badge-navy-text)] hover:bg-[var(--bg-hover)] flex items-center gap-1.5 border-t border-[var(--border)] mt-1 pt-1.5"
+            >
+              <Plus size={12} /> Ajouter « {recherche} »
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   registreExistant: RisqueIndustriel[];
@@ -177,24 +300,14 @@ export function RisqueWizard({ registreExistant, onCancel, onCree }: Props) {
 
         {etape === 1 && (
           <div className="card p-5 space-y-4">
-            <p className="text-sm font-semibold text-[color:var(--text-primary)]">Analyse du danger</p>
-            {[
-              { label: 'Danger *', value: danger, set: setDanger, placeholder: 'Ex. Chute de hauteur, exposition chimique…' },
-              { label: 'Situation dangereuse *', value: situationDangereuse, set: setSituationDangereuse, placeholder: 'Contexte d\'exposition au danger' },
-              { label: 'Événement redouté *', value: evenementRedoute, set: setEvenementRedoute, placeholder: 'Ce qui pourrait se produire' },
-              { label: 'Conséquence potentielle *', value: consequencePotentielle, set: setConsequencePotentielle, placeholder: 'Impact sur les personnes/biens/environnement' },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="text-[11px] font-semibold text-[color:var(--text-muted)] uppercase tracking-wide">{f.label}</label>
-                <textarea
-                  className="w-full mt-1 border border-[var(--border-strong)] rounded-xl px-3 py-2 text-sm bg-[var(--bg-input)] text-[color:var(--text-primary)] resize-none focus:outline-none focus:ring-2 focus:ring-[rgba(0,212,255,0.35)]"
-                  rows={2}
-                  placeholder={f.placeholder}
-                  value={f.value}
-                  onChange={e => f.set(e.target.value)}
-                />
-              </div>
-            ))}
+            <div>
+              <p className="text-sm font-semibold text-[color:var(--text-primary)]">Analyse du danger</p>
+              <p className="text-[11px] text-[color:var(--text-muted)] mt-0.5">Choisissez dans la liste ou saisissez votre propre texte.</p>
+            </div>
+            <ComboboxChoix label="Danger *" value={danger} onChange={setDanger} options={OPTIONS_DANGER} placeholder="Ex. Chute de hauteur, exposition chimique…" />
+            <ComboboxChoix label="Situation dangereuse *" value={situationDangereuse} onChange={setSituationDangereuse} options={OPTIONS_SITUATION} placeholder="Contexte d'exposition au danger" />
+            <ComboboxChoix label="Événement redouté *" value={evenementRedoute} onChange={setEvenementRedoute} options={OPTIONS_EVENEMENT} placeholder="Ce qui pourrait se produire" />
+            <ComboboxChoix label="Conséquence potentielle *" value={consequencePotentielle} onChange={setConsequencePotentielle} options={OPTIONS_CONSEQUENCE} placeholder="Impact sur les personnes/biens/environnement" />
           </div>
         )}
 
