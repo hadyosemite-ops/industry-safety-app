@@ -140,7 +140,7 @@ export function DashboardAnalyseRisques() {
         icon={Radar}
         title="Analyse des Risques Industriels"
         subtitle="Installation · Opération · Matrice F×G · Plan d'action"
-        action={{ label: 'Nouveau risque', onClick: () => setShowWizard(true) }}
+        action={{ label: 'Nouvelle analyse de risque', onClick: () => setShowWizard(true) }}
       />
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
