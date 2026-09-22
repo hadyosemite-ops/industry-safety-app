@@ -171,23 +171,23 @@ export function RegistreRisques({ risques, onSelect, celluleFiltre, onResetCellu
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select value={filtrePhase} onChange={e => setFiltrePhase(e.target.value as PhaseRisque | 'TOUS')} className="form-select text-xs px-2.5 py-1.5 rounded-lg">
+          <select value={filtrePhase} onChange={e => setFiltrePhase(e.target.value as PhaseRisque | 'TOUS')} className="form-select w-auto flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg">
             <option value="TOUS">Toutes les phases</option>
             <option value="INSTALLATION">{LABELS_PHASE.INSTALLATION}</option>
             <option value="OPERATION">{LABELS_PHASE.OPERATION}</option>
           </select>
 
-          <select value={filtreZone} onChange={e => setFiltreZone(e.target.value)} className="form-select text-xs px-2.5 py-1.5 rounded-lg">
+          <select value={filtreZone} onChange={e => setFiltreZone(e.target.value)} className="form-select w-auto flex-shrink-0 max-w-[10rem] text-xs px-2.5 py-1.5 rounded-lg">
             <option value="TOUTES">Toutes les zones</option>
             {zones.map(z => <option key={z} value={z}>{z}</option>)}
           </select>
 
-          <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value as StatutRisque | 'TOUS')} className="form-select text-xs px-2.5 py-1.5 rounded-lg">
+          <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value as StatutRisque | 'TOUS')} className="form-select w-auto flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg">
             <option value="TOUS">Tous les statuts</option>
             {(Object.keys(LABELS_STATUT_RISQUE) as StatutRisque[]).map(s => <option key={s} value={s}>{LABELS_STATUT_RISQUE[s]}</option>)}
           </select>
 
-          <select value={filtreNiveau} onChange={e => setFiltreNiveau(e.target.value as NiveauCriticite | 'TOUS')} className="form-select text-xs px-2.5 py-1.5 rounded-lg">
+          <select value={filtreNiveau} onChange={e => setFiltreNiveau(e.target.value as NiveauCriticite | 'TOUS')} className="form-select w-auto flex-shrink-0 text-xs px-2.5 py-1.5 rounded-lg">
             <option value="TOUS">Tous les niveaux</option>
             {ORDRE_NIVEAU.map(n => <option key={n} value={n}>{LABELS_NIVEAU[n]}</option>)}
           </select>
@@ -196,7 +196,7 @@ export function RegistreRisques({ risques, onSelect, celluleFiltre, onResetCellu
             <button
               type="button"
               onClick={onResetCellule}
-              className="text-xs font-semibold text-[color:var(--badge-navy-text)] hover:underline px-1"
+              className="flex-shrink-0 text-xs font-semibold text-[color:var(--badge-navy-text)] hover:underline px-1"
             >
               Filtre matrice F{celluleFiltre.frequence}×G{celluleFiltre.gravite} ✕
             </button>
