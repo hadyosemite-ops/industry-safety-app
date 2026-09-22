@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ElementType } from 'react';
 import { clsx } from 'clsx';
 import {
-  Radar, ShieldCheck, TrendingDown, CheckCircle2, Eye, LayoutDashboard,
-  ListChecks, Grid3x3, ClipboardList, BarChart2,
+  Radar, ShieldCheck, AlertTriangle, CheckCircle2, Eye, LayoutDashboard,
+  ListChecks, Grid3x3, ClipboardList, BarChart2, Clock, Calendar,
 } from 'lucide-react';
 import { ModuleHeader } from '@/components/ui/ModuleHeader';
 import type { RisqueIndustriel, ActionRisque, PhaseRisque } from '../types';
@@ -16,11 +16,6 @@ import { RegistreRisques } from './RegistreRisques';
 import { RisqueDetail } from './RisqueDetail';
 import { RisqueWizard } from './RisqueWizard';
 import { PlanActionKanban } from './PlanActionKanban';
-
-// KPIs Taux de Fréquence / Taux de Gravité / presqu'accidents proviennent du
-// module Accidentologie (mêmes définitions ISO/OHSAS que le reste de l'app) —
-// ce module-ci n'a pas vocation à recalculer heures travaillées/effectif.
-import { KPIS_DEMO as KPIS_ACCIDENTOLOGIE } from '@/modules/accidentologie/data/demo.data';
 
 // ── Compteur animé ────────────────────────────────────────────────────────────
 
@@ -98,13 +93,17 @@ export function DashboardAnalyseRisques() {
 
   const kpis = useMemo(() => {
     const nbCritiques = risquesFiltres.filter(r => (r.niveau_residuel ?? r.niveau_initial) === 'CRITIQUE').length;
+    const scores = risquesFiltres.map(r => r.score_residuel ?? r.score_initial);
+    const scoreMoyen = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
     return {
+      nbTotal: risquesFiltres.length,
       pctCritiquesMaitrises: calculerTauxCritiquesMaitrises(risquesFiltres),
       tauxClotureDelais: calculerTauxClotureDelais(toutesActions),
       nbOuverts: risquesFiltres.filter(r => r.statut !== 'CLOTURE').length,
       nbCritiques,
       nbActionsEnRetard: toutesActions.filter(actionEstEnRetard).length,
       nbActionsEcheanceProche: toutesActions.filter(a => actionEcheanceProche(a)).length,
+      scoreMoyen,
     };
   }, [risquesFiltres, toutesActions]);
 
@@ -165,15 +164,17 @@ export function DashboardAnalyseRisques() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard icon={TrendingDown} label="Taux de Fréquence" valeur={KPIS_ACCIDENTOLOGIE.tf} decimales={1} sub="Accidentologie site" color="bg-danger-50 text-[color:var(--badge-danger-text)]" />
-          <KpiCard icon={TrendingDown} label="Taux de Gravité" valeur={KPIS_ACCIDENTOLOGIE.tg} decimales={2} sub="Accidentologie site" color="bg-safety-50 text-[color:var(--badge-safety-text)]" />
-          <KpiCard icon={ShieldCheck} label="Critiques sous maîtrise" valeur={kpis.pctCritiquesMaitrises} suffixe="%" sub={`${kpis.nbCritiques} risque(s) critique(s)`} color="bg-navy-50 text-[color:var(--badge-navy-text)]" urgent={kpis.pctCritiquesMaitrises < 60 && kpis.nbCritiques > 0} />
+          <KpiCard icon={ListChecks} label="Risques au registre" valeur={kpis.nbTotal} sub={`${kpis.nbOuverts} ouvert(s)`} color="bg-navy-50 text-[color:var(--badge-navy-text)]" />
+          <KpiCard icon={AlertTriangle} label="Risques critiques" valeur={kpis.nbCritiques} sub="Score actuel ≥ 15" color="bg-danger-50 text-[color:var(--badge-danger-text)]" urgent={kpis.nbCritiques > 0} />
+          <KpiCard icon={ShieldCheck} label="Critiques sous maîtrise" valeur={kpis.pctCritiquesMaitrises} suffixe="%" sub={`${kpis.nbCritiques} risque(s) critique(s)`} color="bg-safety-50 text-[color:var(--badge-safety-text)]" urgent={kpis.pctCritiquesMaitrises < 60 && kpis.nbCritiques > 0} />
           <KpiCard icon={CheckCircle2} label="Actions clôturées à temps" valeur={kpis.tauxClotureDelais} suffixe="%" sub={`${kpis.nbActionsEnRetard} action(s) en retard`} color="bg-success-50 text-[color:var(--badge-success-text)]" urgent={kpis.nbActionsEnRetard > 0} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <KpiCard icon={Eye} label="Presqu'accidents remontés" valeur={KPIS_ACCIDENTOLOGIE.nb_presqu_accidents} sub="Culture de remontée proactive" color="bg-violet-500/10 text-[color:var(--badge-purple-text)]" />
-          <KpiCard icon={BarChart2} label="Risques ouverts" valeur={kpis.nbOuverts} sub={`sur ${risquesFiltres.length} au registre`} color="bg-[var(--bg-hover)] text-[color:var(--text-secondary)]" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard icon={BarChart2} label="Score moyen du registre" valeur={kpis.scoreMoyen} decimales={1} sub="Fréquence × Gravité" color="bg-[var(--bg-hover)] text-[color:var(--text-secondary)]" />
+          <KpiCard icon={Eye} label="Risques ouverts" valeur={kpis.nbOuverts} sub={`sur ${kpis.nbTotal} au registre`} color="bg-violet-500/10 text-[color:var(--badge-purple-text)]" />
+          <KpiCard icon={Clock} label="Actions en retard" valeur={kpis.nbActionsEnRetard} sub="Échéance dépassée" color="bg-danger-50 text-[color:var(--badge-danger-text)]" urgent={kpis.nbActionsEnRetard > 0} />
+          <KpiCard icon={Calendar} label="Échéance sous 7 jours" valeur={kpis.nbActionsEcheanceProche} sub="Actions à surveiller" color="bg-safety-50 text-[color:var(--badge-safety-text)]" urgent={kpis.nbActionsEcheanceProche > 0} />
         </div>
 
         {/* Onglets */}
