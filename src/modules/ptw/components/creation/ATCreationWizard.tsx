@@ -253,7 +253,7 @@ export function ATCreationWizard() {
   // ── Succès ─────────────────────────────────────────────────────────────────
   if (soumis && atCreee) {
     return (
-      <div className="min-h-screen bg-[#020817] flex items-center justify-center p-6">
+      <div className="min-h-[70vh] flex items-center justify-center p-6">
         <div className="card p-10 max-w-md w-full text-center animate-fade-in-up">
           <div className="w-16 h-16 bg-safety-50 rounded-full flex items-center justify-center mx-auto mb-5">
             <CheckSquare size={32} className="text-safety-500" />
@@ -280,39 +280,44 @@ export function ATCreationWizard() {
 
   // ── Layout principal ────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#020817] flex flex-col">
+    <div className="min-h-full flex flex-col">
       {/* Topbar */}
-      <header className="bg-[#050e1f] border-b border-white/[0.08] text-white px-6 py-4 flex items-center gap-4 shadow-lg">
+      <header
+        className="border-b px-6 py-4 flex items-center gap-4"
+        style={{ background: 'var(--bg-header)', borderColor: 'var(--border)' }}
+      >
         <div className="flex items-center gap-3">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #00d4ff, #0077aa)', boxShadow: '0 0 16px rgba(0,212,255,0.3)' }}
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-2))', boxShadow: '0 0 16px rgba(0,212,255,0.3)' }}
           >
-            <Shield size={16} className="text-[#02101f]" strokeWidth={2.5} />
+            <Shield size={16} className="text-[#06101f]" strokeWidth={2.5} />
           </div>
-          <span className="font-bold text-base tracking-tight">HSE 365</span>
+          <span className="font-bold text-base tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            Nouvelle autorisation de travail
+          </span>
         </div>
-        <div className="h-5 w-px bg-white/20 mx-2" />
-        <span className="text-white/70 text-sm">Nouvelle Autorisation de Travail</span>
 
         {/* Barre de progression */}
         <div className="ml-auto flex items-center gap-2">
           <div className="flex gap-1.5">
             {[1, 2, 3].map(n => (
-              <div key={n} className={`h-1.5 w-10 rounded-full transition-all duration-300 ${
-                n <= etape ? 'bg-white' : 'bg-white/30'
-              }`} />
+              <div
+                key={n}
+                className="h-1.5 w-10 rounded-full transition-all duration-300"
+                style={{ background: n <= etape ? 'var(--color-accent)' : 'var(--border-strong)' }}
+              />
             ))}
           </div>
-          <span className="text-xs text-white/60 ml-2">{etape}/3</span>
+          <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>{etape}/3</span>
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Sidebar gauche */}
+      <div className="flex flex-1 min-h-0">
+        {/* Colonne étapes */}
         <aside
-          className="w-64 flex-shrink-0 border-r border-white/[0.08] p-5 flex flex-col gap-6"
-          style={{ background: 'linear-gradient(180deg, #050e1f 0%, #020817 100%)' }}
+          className="w-64 flex-shrink-0 border-r p-5 flex flex-col gap-6 hidden md:flex"
+          style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border)' }}
         >
           <StepIndicator
             steps={ETAPES}
@@ -321,22 +326,22 @@ export function ATCreationWizard() {
           />
 
           {/* Aide contextuelle */}
-          <div className="mt-auto bg-white/10 rounded-xl p-4 text-white/80 text-xs leading-relaxed">
+          <div className="mt-auto rounded-xl p-4 text-xs leading-relaxed" style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
             {etape === 1 && (
               <>
-                <p className="font-semibold text-white mb-1">💡 Étape 1 — AT</p>
+                <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>💡 Étape 1 — AT</p>
                 Renseignez les informations générales : la zone de travail, les dates prévues et l'évaluation globale des risques.
               </>
             )}
             {etape === 2 && (
               <>
-                <p className="font-semibold text-white mb-1">💡 Étape 2 — Permis</p>
+                <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>💡 Étape 2 — Permis</p>
                 Ajoutez un permis par type de danger. Chaque permis a sa propre checklist. Tous doivent être validés par l'Animateur avant le GO terrain.
               </>
             )}
             {etape === 3 && (
               <>
-                <p className="font-semibold text-white mb-1">💡 Étape 3 — Revue</p>
+                <p className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>💡 Étape 3 — Revue</p>
                 Vérifiez toutes les informations avant soumission. Une fois soumise, l'AT sera transmise à l'Animateur de Sécurité.
               </>
             )}
@@ -344,7 +349,7 @@ export function ATCreationWizard() {
         </aside>
 
         {/* Corps principal */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1">
           <div className="max-w-4xl mx-auto p-6 lg:p-8">
             {/* Erreur globale */}
             {erreurs.global && (

@@ -8,7 +8,6 @@ import { clsx } from 'clsx';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { ToastProvider } from '@/components/ui/ToastProvider';
-import { Avatar } from '@/components/ui/Avatar';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { LoginPage } from '@/components/auth/LoginPage';
@@ -174,16 +173,22 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
 
   const aucunResultat = recherche.trim() !== '' && groupesVisibles.length === 0;
 
+  // Initiales de l'utilisateur pour l'avatar en dégradé du pied de sidebar
+  // (dégradé accent → accent-2, exactement comme dans la maquette — thème-réactif).
+  const initiales = profile
+    ? `${profile.prenom.charAt(0)}${profile.nom.charAt(0)}`.toUpperCase()
+    : '··';
+
   return (
     <aside
       className={clsx(
-        'fixed left-0 top-0 h-screen flex flex-col z-40 select-none shadow-sidebar',
+        'fixed left-0 top-0 h-screen flex flex-col z-40 select-none border-r',
         'w-[240px]',
         collapsed ? 'lg:w-[72px]' : 'lg:w-[240px]',
         'transform transition-all duration-200 ease-out lg:translate-x-0',
         open ? 'translate-x-0' : '-translate-x-full',
       )}
-      style={{ background: 'linear-gradient(180deg, #050e1f 0%, #020817 100%)' }}
+      style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
     >
 
       {/* ── Bouton réduire/agrandir (desktop uniquement) ── */}
@@ -192,36 +197,34 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
         onClick={onToggleCollapsed}
         aria-label={collapsed ? 'Agrandir le menu' : 'Réduire le menu'}
         className="hidden lg:flex absolute -right-3 top-6 w-6 h-6 rounded-full items-center justify-center
-                   bg-[#0c1c33] border border-white/[0.12] text-white/50 hover:text-white hover:border-white/25
                    transition-colors shadow-md z-10"
+        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }}
       >
         {collapsed ? <ChevronRight size={12} aria-hidden="true" /> : <ChevronLeft size={12} aria-hidden="true" />}
       </button>
 
       {/* ── Logo ── */}
-      <div className={clsx('pt-5 pb-4 border-b border-white/[0.08]', collapsed ? 'px-0' : 'px-5')}>
+      <div className={clsx('pt-5 pb-4 border-b', collapsed ? 'px-0' : 'px-5')} style={{ borderColor: 'var(--border)' }}>
         <div className={clsx('flex items-center gap-3', collapsed && 'justify-center')}>
           {/* Logo icon */}
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #00d4ff, #0077aa)', boxShadow: '0 0 20px rgba(0,212,255,0.35)' }}
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), var(--color-accent-2))', boxShadow: '0 0 20px rgba(0,212,255,0.35)' }}
           >
-            <Shield size={18} className="text-[#02101f]" strokeWidth={2.5} />
+            <Shield size={18} className="text-[#06101f]" strokeWidth={2.5} />
           </div>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-white font-bold text-sm leading-none tracking-tight">HSE 365</p>
-              <p className="text-white/40 text-[10px] mt-0.5 font-medium tracking-wide uppercase">Industriel</p>
+              <p className="font-bold text-sm leading-none tracking-tight" style={{ color: 'var(--text-primary)' }}>HSE 365</p>
+              <p className="text-[10px] mt-0.5 font-medium tracking-wide uppercase" style={{ color: 'var(--text-muted)' }}>Industriel</p>
             </div>
           )}
           <button
             type="button"
             onClick={onClose}
             aria-label="Fermer le menu"
-            className={clsx(
-              'lg:hidden p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors flex-shrink-0',
-              collapsed && 'hidden',
-            )}
+            className={clsx('lg:hidden p-1.5 rounded-lg transition-colors flex-shrink-0', collapsed && 'hidden')}
+            style={{ color: 'var(--text-muted)' }}
           >
             <X size={16} aria-hidden="true" />
           </button>
@@ -231,8 +234,11 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
       {/* ── Recherche rapide ── */}
       {!collapsed && (
         <div className="px-3 pt-3">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.08] focus-within:border-[rgba(0,212,255,0.4)] focus-within:bg-white/[0.08] transition-colors">
-            <Search size={13} className="text-white/35 flex-shrink-0" aria-hidden="true" />
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border transition-colors focus-within:border-[var(--color-accent)]"
+            style={{ background: 'var(--bg-hover)', borderColor: 'var(--border)' }}
+          >
+            <Search size={13} className="flex-shrink-0" style={{ color: 'var(--text-muted)' }} aria-hidden="true" />
             <input
               ref={rechercheRef}
               type="text"
@@ -240,10 +246,14 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
               onChange={e => setRecherche(e.target.value)}
               placeholder="Rechercher..."
               aria-label="Rechercher dans la navigation"
-              className="flex-1 min-w-0 bg-transparent border-none outline-none text-xs text-white placeholder:text-white/30"
+              className="flex-1 min-w-0 bg-transparent border-none outline-none text-xs"
+              style={{ color: 'var(--text-primary)' }}
             />
             {recherche === '' ? (
-              <kbd className="hidden sm:inline-block text-[9px] font-semibold text-white/30 bg-white/[0.06] border border-white/[0.10] rounded px-1.5 py-0.5 flex-shrink-0">
+              <kbd
+                className="hidden sm:inline-block text-[9px] font-semibold rounded px-1.5 py-0.5 flex-shrink-0 border"
+                style={{ color: 'var(--text-muted)', background: 'var(--bg-elevated)', borderColor: 'var(--border-strong)' }}
+              >
                 ⌘K
               </kbd>
             ) : (
@@ -251,7 +261,8 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
                 type="button"
                 onClick={() => setRecherche('')}
                 aria-label="Effacer la recherche"
-                className="text-white/30 hover:text-white transition-colors flex-shrink-0"
+                className="transition-colors flex-shrink-0"
+                style={{ color: 'var(--text-muted)' }}
               >
                 <X size={12} />
               </button>
@@ -261,19 +272,21 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
       )}
 
       {/* ── Navigation ── */}
-      <nav className="flex-1 min-h-0 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden no-scrollbar">
+      <nav className="flex-1 min-h-0 px-3 py-4 space-y-3.5 overflow-y-auto overflow-x-hidden no-scrollbar">
         {aucunResultat && (
-          <p className="px-3 py-4 text-xs text-white/30 text-center italic">Aucun résultat pour « {recherche} »</p>
+          <p className="px-3 py-4 text-xs text-center italic" style={{ color: 'var(--text-muted)' }}>
+            Aucun résultat pour « {recherche} »
+          </p>
         )}
         {groupesVisibles.map(group => (
           <div key={group.label}>
             {!collapsed && (
-              <p className="px-3 mb-1.5 text-[10px] font-bold text-white/25 uppercase tracking-widest truncate">
+              <p className="px-2.5 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-widest truncate" style={{ color: 'var(--text-muted)' }}>
                 {group.label}
               </p>
             )}
-            <div className="space-y-0.5">
-              {group.items.map(({ to, icon: Icon, label, end, badge, description }) => (
+            <div>
+              {group.items.map(({ to, icon: Icon, label, end, badge }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -282,56 +295,45 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
                   aria-label={collapsed ? label : undefined}
                   title={collapsed ? label : undefined}
                   className={({ isActive }) => clsx(
-                    'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 w-full border-l-[3px]',
+                    'flex items-center gap-2.5 px-2.5 py-2 rounded-[9px] text-[13.2px] mb-px transition-all duration-150 w-full border-l-[3px] border-transparent',
                     collapsed && 'justify-center px-0',
-                    isActive
-                      ? 'bg-[rgba(0,212,255,0.12)] text-white border-[#00d4ff] shadow-[0_0_0_1px_rgba(0,212,255,0.2)]'
-                      : 'border-transparent text-white/60 hover:text-white hover:bg-[rgba(0,212,255,0.06)]',
+                    isActive ? 'font-semibold' : 'font-medium',
                   )}
+                  style={({ isActive }) => isActive
+                    ? {
+                        background: 'linear-gradient(135deg, rgba(0,212,255,0.14), rgba(139,123,255,0.08))',
+                        boxShadow: 'inset 0 0 0 1px rgba(0,212,255,0.25)',
+                        borderLeftColor: 'var(--color-accent)',
+                        color: 'var(--text-primary)',
+                      }
+                    : { color: 'var(--text-secondary)' }
+                  }
+                  onMouseEnter={e => {
+                    if (!e.currentTarget.classList.contains('font-semibold')) {
+                      e.currentTarget.style.background = 'var(--bg-hover)';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!e.currentTarget.classList.contains('font-semibold')) {
+                      e.currentTarget.style.background = '';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }
+                  }}
                 >
-                  {({ isActive }) => (
+                  <Icon size={16} className="flex-shrink-0" style={{ opacity: 0.85 }} strokeWidth={1.9} />
+
+                  {!collapsed && (
                     <>
-                      {/* Icon */}
-                      <div className={clsx(
-                        'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-150',
-                        isActive
-                          ? 'bg-[rgba(0,212,255,0.16)]'
-                          : 'bg-white/[0.06] group-hover:bg-white/[0.10]',
-                      )}>
-                        <Icon
-                          size={14}
-                          strokeWidth={isActive ? 2.5 : 1.75}
-                          className={isActive ? 'text-[#00d4ff]' : 'text-white/70'}
-                        />
-                      </div>
+                      <span className="flex-1 min-w-0 truncate">{label}</span>
 
-                      {!collapsed && (
-                        <>
-                          {/* Label + description */}
-                          <div className="flex-1 min-w-0">
-                            <p className="leading-none truncate">{label}</p>
-                            {description && !isActive && (
-                              <p className="text-[10px] text-white/30 mt-0.5 truncate font-normal">{description}</p>
-                            )}
-                          </div>
-
-                          {/* Badge */}
-                          {badge !== undefined && badge > 0 && (
-                            <span className={clsx(
-                              'flex-shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center',
-                              isActive
-                                ? 'bg-[#00d4ff] text-[#02101f]'
-                                : 'bg-[#ffb300]/80 text-[#02101f]',
-                            )}>
-                              {badge}
-                            </span>
-                          )}
-
-                          {/* Arrow hint on active */}
-                          {isActive && (
-                            <ChevronRight size={13} className="text-[#4de6ff] flex-shrink-0" />
-                          )}
-                        </>
+                      {badge !== undefined && badge > 0 && (
+                        <span
+                          className="flex-shrink-0 text-[10.5px] font-bold px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'var(--warning-bg, rgba(255,179,0,0.16))', color: 'var(--badge-amber-text)' }}
+                        >
+                          {badge}
+                        </span>
                       )}
                     </>
                   )}
@@ -342,41 +344,57 @@ function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: SidebarProps) 
         ))}
       </nav>
 
-      {/* ── Pied — user + actions ── */}
-      <div className={clsx('py-4 border-t border-white/[0.08] space-y-1', collapsed ? 'px-2' : 'px-3')}>
+      {/* ── Pied — thème + user ── */}
+      <div className={clsx('py-3 border-t space-y-1', collapsed ? 'px-2' : 'px-3')} style={{ borderColor: 'var(--border)' }}>
         <button
           type="button"
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
-          title={collapsed ? (theme === 'dark' ? 'Mode clair' : 'Mode sombre') : undefined}
+          title={collapsed ? (theme === 'dark' ? 'Mode sombre' : 'Mode clair') : undefined}
           className={clsx(
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/[0.06] transition-all duration-150 text-xs font-medium',
+            'w-full flex items-center gap-2 px-2 py-1.5 rounded-[9px] transition-colors duration-150 text-[12.5px] font-medium',
             collapsed && 'justify-center px-0',
           )}
+          style={{ color: 'var(--text-secondary)' }}
         >
-          {theme === 'dark' ? <Sun size={14} aria-hidden="true" /> : <Moon size={14} aria-hidden="true" />}
-          {!collapsed && <span>{theme === 'dark' ? 'Mode clair' : 'Mode sombre'}</span>}
+          {theme === 'dark' ? <Moon size={14} aria-hidden="true" /> : <Sun size={14} aria-hidden="true" />}
+          {!collapsed && (
+            <>
+              <span>{theme === 'dark' ? 'Mode sombre' : 'Mode clair'}</span>
+              <span
+                className="ml-auto relative w-[30px] h-[17px] rounded-full flex-shrink-0 transition-colors duration-200"
+                style={{ background: theme === 'dark' ? 'var(--color-accent)' : 'var(--border-strong)' }}
+              >
+                <span
+                  className="absolute top-[2px] left-[2px] w-[13px] h-[13px] rounded-full bg-white transition-transform duration-200"
+                  style={{ transform: theme === 'dark' ? 'translateX(13px)' : 'translateX(0)', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }}
+                />
+              </span>
+            </>
+          )}
         </button>
 
-        {/* User avatar */}
-        <div className={clsx(
-          'mt-2 pt-3 border-t border-white/[0.08] flex items-center gap-3',
-          collapsed ? 'justify-center' : 'px-1',
-        )}>
-          <Avatar name={profile ? `${profile.prenom} ${profile.nom}` : '··'} size="md" className="rounded-xl" />
+        {/* User card */}
+        <div className={clsx('mt-1.5 pt-2.5 border-t flex items-center gap-2.5', collapsed ? 'justify-center' : 'px-1')} style={{ borderColor: 'var(--border)' }}>
+          <div
+            className="w-[30px] h-[30px] rounded-[9px] flex items-center justify-center flex-shrink-0 font-bold text-[12px] text-white"
+            style={{ background: 'linear-gradient(135deg, var(--color-accent-2), var(--color-accent))' }}
+          >
+            {initiales}
+          </div>
           {!collapsed && (
             <>
               <div className="min-w-0 flex-1">
-                <p className="text-white text-xs font-semibold leading-none truncate">{nomComplet}</p>
-                <p className="text-white/30 text-[10px] mt-0.5 truncate capitalize">{roleLabel}</p>
+                <p className="text-[12.5px] font-semibold leading-none truncate" style={{ color: 'var(--text-primary)' }}>{nomComplet}</p>
+                <p className="text-[10.5px] mt-0.5 truncate capitalize" style={{ color: 'var(--text-muted)' }}>{roleLabel}</p>
               </div>
-              <div className="w-1.5 h-1.5 bg-[#00e676] rounded-full flex-shrink-0" />
               <button
                 type="button"
                 onClick={() => void signOut()}
                 aria-label="Se déconnecter"
                 title="Se déconnecter"
-                className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.08] transition-colors flex-shrink-0"
+                className="p-1.5 rounded-lg transition-colors flex-shrink-0"
+                style={{ color: 'var(--text-muted)' }}
               >
                 <LogOut size={13} aria-hidden="true" />
               </button>
@@ -395,9 +413,11 @@ const SIDEBAR_COLLAPSED_KEY = 'hse-sidebar-collapsed';
 function Layout() {
   const { pathname } = useLocation();
   const { session } = useAuth();
-  // Le wizard de création d'AT a son propre header + stepper immersif —
-  // pas besoin (et pas de place) pour la sidebar principale à côté.
-  const hideSidebar = pathname.startsWith('/permis/') || pathname === '/at/nouvelle';
+  // Seule la page terrain (QR code, accès hors navigation principale) reste
+  // en plein écran sans la sidebar. Le wizard de création d'AT (/at/nouvelle)
+  // reste dans le Layout normal : la navigation principale doit rester
+  // accessible même en cours de création d'une AT.
+  const hideSidebar = pathname.startsWith('/permis/');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(
     () => typeof window !== 'undefined' && window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1',
@@ -422,7 +442,6 @@ function Layout() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/permis/:token" element={<PermisQRPage />} />
-            <Route path="/at/nouvelle"   element={<ProtectedRoute><ATCreationWizard /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
@@ -453,16 +472,20 @@ function Layout() {
         collapsed ? 'lg:ml-[72px]' : 'lg:ml-[240px]',
       )}>
         {/* Barre mobile — hamburger, visible uniquement sous 1024px */}
-        <div className="lg:hidden sticky top-0 z-20 flex items-center gap-3 px-4 py-3 bg-[#050e1f]/95 backdrop-blur-md border-b border-white/[0.08]">
+        <div
+          className="lg:hidden sticky top-0 z-20 flex items-center gap-3 px-4 py-3 backdrop-blur-md border-b"
+          style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}
+        >
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label="Ouvrir le menu"
-            className="p-2 rounded-lg bg-white/[0.06] hover:bg-[rgba(0,212,255,0.10)] transition-colors text-white/70 hover:text-white"
+            className="p-2 rounded-lg transition-colors"
+            style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)' }}
           >
             <Menu size={18} aria-hidden="true" />
           </button>
-          <span className="text-white font-bold text-sm tracking-tight">HSE 365</span>
+          <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text-primary)' }}>HSE 365</span>
         </div>
 
         <ErrorBoundary key={pathname} moduleLabel="ce module">

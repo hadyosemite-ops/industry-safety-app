@@ -21,24 +21,28 @@
     --shadow-elevated: 0 1px 0 rgba(255,255,255,0.04) inset, 0 28px 60px -24px rgba(0,0,0,0.7);
     --shadow-modal:    0 24px 60px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.05) inset;
 
-    /* Tokens FleetOS — repris pour dégradés / effets non exprimables en Tailwind pur */
-    --bg-app:         #020817;
-    --bg-sidebar:     linear-gradient(180deg, #050e1f 0%, #020817 100%);
+    /* Tokens — repris à l'identique de la maquette hse365-redesign.html
+       (thème sombre) : mêmes valeurs exactes, appliquées à toute l'app via
+       ces variables déjà consommées partout (.card, .badge, bordures, etc.). */
+    --bg-app:         #060e1c;
+    --bg-app-2:       #0a1730;
+    --bg-sidebar:     var(--bg-app-2);
     --bg-header:      rgba(5,14,31,0.9);
-    --bg-card:        rgba(13,27,46,0.85);
-    --bg-elevated:    #0a1628;
-    --bg-hover:       rgba(0,212,255,0.05);
+    --bg-card:        rgba(19,34,61,0.62);
+    --bg-elevated:    #0d1a33;
+    --bg-hover:       rgba(255,255,255,0.045);
+    --bg-hover-strong:rgba(255,255,255,0.08);
     --bg-input:       #0a1628;
 
-    --border:         #1e3a5f;
-    --border-strong:  #234878;
-    --border-faint:   rgba(30,58,95,0.4);
-    --card-border:    rgba(30,58,95,0.6);
+    --border:         rgba(255,255,255,0.08);
+    --border-strong:  rgba(255,255,255,0.16);
+    --border-faint:   rgba(255,255,255,0.06);
+    --card-border:    rgba(255,255,255,0.08);
     --card-backdrop:  blur(14px);
 
-    --text-primary:   #e8f4fd;
-    --text-secondary: #7bacc8;
-    --text-muted:     #4a7a9b;
+    --text-primary:   #f3f6fb;
+    --text-secondary: #9fb0c9;
+    --text-muted:     #64748b;
     --text-faint:     #2a5070;
 
     --badge-navy-text:    #4de6ff;
@@ -71,21 +75,25 @@
     --shadow-elevated: 0 1px 0 rgba(255,255,255,0.7) inset, 0 24px 50px -20px rgba(15,35,60,0.25);
     --shadow-modal:    0 24px 50px -18px rgba(15,35,60,0.30), 0 1px 0 rgba(255,255,255,0.7) inset;
 
-    --bg-app:         #f3f6fa;
+    /* Valeurs exactes de la maquette (thème clair) */
+    --bg-app:         #f2f4f9;
+    --bg-app-2:       #e9edf6;
+    --bg-sidebar:     var(--bg-app-2);
     --bg-header:      rgba(255,255,255,0.9);
-    --bg-card:        rgba(255,255,255,0.9);
+    --bg-card:        rgba(255,255,255,0.86);
     --bg-elevated:    #ffffff;
-    --bg-hover:       rgba(0,150,199,0.06);
+    --bg-hover:       rgba(15,23,42,0.035);
+    --bg-hover-strong:rgba(15,23,42,0.06);
     --bg-input:       #ffffff;
 
-    --border:         #d7e0ea;
-    --border-strong:  #c2cedd;
-    --border-faint:   rgba(148,163,184,0.35);
-    --card-border:    rgba(148,163,184,0.4);
+    --border:         rgba(15,23,42,0.08);
+    --border-strong:  rgba(15,23,42,0.14);
+    --border-faint:   rgba(15,23,42,0.06);
+    --card-border:    rgba(15,23,42,0.08);
 
-    --text-primary:   #0f2438;
-    --text-secondary: #3d5a76;
-    --text-muted:     #6b8299;
+    --text-primary:   #0f1b2d;
+    --text-secondary: #55647c;
+    --text-muted:     #94a3b8;
     --text-faint:     #94a7b8;
 
     /* Les couleurs de badges "glow" sombres sont trop peu contrastées sur
@@ -119,21 +127,23 @@
     --shadow-elevated: 0 1px 0 rgba(255,255,255,0.04) inset, 0 28px 60px -24px rgba(0,0,0,0.7);
     --shadow-modal:    0 24px 60px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.30), 0 1px 0 rgba(255,255,255,0.05) inset;
 
-    --bg-app:         #020817;
+    --bg-app:         #060e1c;
+    --bg-app-2:       #0a1730;
     --bg-header:      rgba(5,14,31,0.9);
-    --bg-card:        rgba(13,27,46,0.85);
-    --bg-elevated:    #0a1628;
-    --bg-hover:       rgba(0,212,255,0.05);
+    --bg-card:        rgba(19,34,61,0.62);
+    --bg-elevated:    #0d1a33;
+    --bg-hover:       rgba(255,255,255,0.045);
+    --bg-hover-strong:rgba(255,255,255,0.08);
     --bg-input:       #0a1628;
 
-    --border:         #1e3a5f;
-    --border-strong:  #234878;
-    --border-faint:   rgba(30,58,95,0.4);
-    --card-border:    rgba(30,58,95,0.6);
+    --border:         rgba(255,255,255,0.08);
+    --border-strong:  rgba(255,255,255,0.16);
+    --border-faint:   rgba(255,255,255,0.06);
+    --card-border:    rgba(255,255,255,0.08);
 
-    --text-primary:   #e8f4fd;
-    --text-secondary: #7bacc8;
-    --text-muted:     #4a7a9b;
+    --text-primary:   #f3f6fb;
+    --text-secondary: #9fb0c9;
+    --text-muted:     #64748b;
     --text-faint:     #2a5070;
 
     --badge-navy-text:    #4de6ff;
@@ -279,7 +289,7 @@
     background-position: right 12px center;
     padding-right: 2.25rem;
   }
-  .form-select option { background: #0a1628; color: #e8f4fd; }
+  .form-select option { background: var(--bg-elevated); color: var(--text-primary); }
 
   .form-textarea { @apply form-input resize-none; }
 
