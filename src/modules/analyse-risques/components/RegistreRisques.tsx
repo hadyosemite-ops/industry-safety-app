@@ -73,7 +73,7 @@ export function RegistreRisques({ risques, onSelect, celluleFiltre, onResetCellu
         r.numero.toLowerCase().includes(q) ||
         r.danger.toLowerCase().includes(q) ||
         r.activite.toLowerCase().includes(q) ||
-        r.evenement_redoute.toLowerCase().includes(q);
+        (r.evenement_redoute ?? '').toLowerCase().includes(q);
       const matchPhase = filtrePhase === 'TOUS' || r.phase === filtrePhase;
       const matchStatut = filtreStatut === 'TOUS' || r.statut === filtreStatut;
       const matchNiveau = filtreNiveau === 'TOUS' || niveauActuel(r) === filtreNiveau;
@@ -137,7 +137,7 @@ export function RegistreRisques({ risques, onSelect, celluleFiltre, onResetCellu
     ];
     const lignes = tries.map(r => [
       r.numero, LABELS_PHASE[r.phase], r.zone_code ?? '', r.activite, r.danger, r.situation_dangereuse,
-      r.evenement_redoute, r.consequence_potentielle, r.frequence_initiale, r.gravite_initiale,
+      r.evenement_redoute ?? '', r.consequence_potentielle, r.frequence_initiale, r.gravite_initiale,
       r.score_initial, LABELS_NIVEAU[r.niveau_initial], r.frequence_residuelle ?? '', r.gravite_residuelle ?? '',
       r.score_residuel ?? '', r.niveau_residuel ? LABELS_NIVEAU[r.niveau_residuel] : '',
       LABELS_STATUT_RISQUE[r.statut], r.responsable_nom ?? '',

@@ -184,7 +184,7 @@ export interface Database {
           activite: string;
           danger: string;
           situation_dangereuse: string;
-          evenement_redoute: string;
+          evenement_redoute: string | null;
           consequence_potentielle: string;
           frequence_initiale: number;
           gravite_initiale: number;
@@ -205,8 +205,8 @@ export interface Database {
         };
         Insert: Omit<
           Database['public']['Tables']['risques_industriels']['Row'],
-          'id' | 'numero' | 'score_initial' | 'niveau_initial' | 'score_residuel' | 'niveau_residuel' | 'date_derniere_cotation' | 'created_at' | 'updated_at'
-        > & { numero?: string };
+          'id' | 'numero' | 'evenement_redoute' | 'score_initial' | 'niveau_initial' | 'score_residuel' | 'niveau_residuel' | 'date_derniere_cotation' | 'created_at' | 'updated_at'
+        > & { numero?: string; evenement_redoute?: string | null };
         Update: Partial<Database['public']['Tables']['risques_industriels']['Insert']>;
       };
       cotations_risques: {

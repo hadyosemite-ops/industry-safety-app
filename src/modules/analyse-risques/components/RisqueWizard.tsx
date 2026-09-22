@@ -36,14 +36,6 @@ const OPTIONS_SITUATION = [
   'Absence de consignation avant intervention', 'Travail isolé sans moyen d\'alerte',
 ];
 
-const OPTIONS_EVENEMENT = [
-  'Chute de hauteur avec impact au sol', 'Contact avec une pièce sous tension',
-  'Inhalation de vapeurs ou de gaz toxiques', 'Écrasement par chute de charge',
-  'Renversement / collision avec un engin', 'Départ de feu ou explosion',
-  'Coupure profonde', 'Intoxication / asphyxie', 'Effondrement de structure',
-  'Noyade', 'Ensevelissement', 'Projection dans les yeux',
-];
-
 const OPTIONS_CONSEQUENCE = [
   'Blessure légère (premiers secours)', 'Blessure avec arrêt de travail',
   'Blessure grave / invalidité permanente', 'Décès', 'Maladie professionnelle',
@@ -159,7 +151,6 @@ export function RisqueWizard({ registreExistant, onCancel, onCree }: Props) {
   // Étape 2
   const [danger, setDanger] = useState('');
   const [situationDangereuse, setSituationDangereuse] = useState('');
-  const [evenementRedoute, setEvenementRedoute] = useState('');
   const [consequencePotentielle, setConsequencePotentielle] = useState('');
 
   // Étape 3
@@ -200,7 +191,7 @@ export function RisqueWizard({ registreExistant, onCancel, onCree }: Props) {
 
   function etapeValide(i: number): boolean {
     if (i === 0) return !!activite.trim();
-    if (i === 1) return !!(danger.trim() && situationDangereuse.trim() && evenementRedoute.trim() && consequencePotentielle.trim());
+    if (i === 1) return !!(danger.trim() && situationDangereuse.trim() && consequencePotentielle.trim());
     return true;
   }
 
@@ -215,7 +206,6 @@ export function RisqueWizard({ registreExistant, onCancel, onCree }: Props) {
       activite: activite.trim(),
       danger: danger.trim(),
       situation_dangereuse: situationDangereuse.trim(),
-      evenement_redoute: evenementRedoute.trim(),
       consequence_potentielle: consequencePotentielle.trim(),
       frequence_initiale: frequence,
       gravite_initiale: gravite,
@@ -306,7 +296,6 @@ export function RisqueWizard({ registreExistant, onCancel, onCree }: Props) {
             </div>
             <ComboboxChoix label="Danger *" value={danger} onChange={setDanger} options={OPTIONS_DANGER} placeholder="Ex. Chute de hauteur, exposition chimique…" />
             <ComboboxChoix label="Situation dangereuse *" value={situationDangereuse} onChange={setSituationDangereuse} options={OPTIONS_SITUATION} placeholder="Contexte d'exposition au danger" />
-            <ComboboxChoix label="Événement redouté *" value={evenementRedoute} onChange={setEvenementRedoute} options={OPTIONS_EVENEMENT} placeholder="Ce qui pourrait se produire" />
             <ComboboxChoix label="Conséquence potentielle *" value={consequencePotentielle} onChange={setConsequencePotentielle} options={OPTIONS_CONSEQUENCE} placeholder="Impact sur les personnes/biens/environnement" />
           </div>
         )}
@@ -397,7 +386,6 @@ export function RisqueWizard({ registreExistant, onCancel, onCree }: Props) {
               <p><span className="font-semibold text-[color:var(--text-primary)]">Phase :</span> {LABELS_PHASE[phase]}</p>
               <p><span className="font-semibold text-[color:var(--text-primary)]">Activité :</span> {activite}</p>
               <p><span className="font-semibold text-[color:var(--text-primary)]">Danger :</span> {danger}</p>
-              <p><span className="font-semibold text-[color:var(--text-primary)]">Événement redouté :</span> {evenementRedoute}</p>
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-[color:var(--text-primary)]">Cotation initiale :</span>
                 <span>F{frequence} × G{gravite} = {score}</span>

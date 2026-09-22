@@ -375,7 +375,7 @@ export function RisqueDetail({ risque: risqueProp, onBack, onUpdate }: Props) {
             </div>
             <div className="space-y-1.5 text-[color:var(--text-secondary)]">
               <p><span className="font-semibold text-[color:var(--text-primary)]">Situation dangereuse : </span>{risque.situation_dangereuse}</p>
-              <p><span className="font-semibold text-[color:var(--text-primary)]">Événement redouté : </span>{risque.evenement_redoute}</p>
+              {risque.evenement_redoute && <p><span className="font-semibold text-[color:var(--text-primary)]">Événement redouté : </span>{risque.evenement_redoute}</p>}
               <p><span className="font-semibold text-[color:var(--text-primary)]">Conséquence potentielle : </span>{risque.consequence_potentielle}</p>
             </div>
           </div>

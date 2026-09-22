@@ -148,7 +148,7 @@ export interface CreerRisquePayload {
   activite: string;
   danger: string;
   situation_dangereuse: string;
-  evenement_redoute: string;
+  evenement_redoute?: string;
   consequence_potentielle: string;
   frequence_initiale: number;
   gravite_initiale: number;

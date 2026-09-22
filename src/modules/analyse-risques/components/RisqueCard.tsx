@@ -61,7 +61,7 @@ export function RisqueCard({ risque, onClick }: Props) {
             <h3 className="font-semibold text-[color:var(--text-primary)] text-sm leading-snug group-hover:text-[color:var(--badge-navy-text)] transition-colors line-clamp-2">
               {risque.danger}
             </h3>
-            <p className="text-xs text-[color:var(--text-muted)] mt-0.5 line-clamp-1">{risque.evenement_redoute}</p>
+            <p className="text-xs text-[color:var(--text-muted)] mt-0.5 line-clamp-1">{risque.evenement_redoute || risque.consequence_potentielle}</p>
           </div>
           <ChevronRight size={16} className="text-[color:var(--text-secondary)] group-hover:text-[color:var(--badge-navy-text)] transition-colors flex-shrink-0 mt-1" />
         </div>

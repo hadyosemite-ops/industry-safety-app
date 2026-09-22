@@ -95,7 +95,7 @@ export interface RisqueIndustriel {
   activite: string;
   danger: string;
   situation_dangereuse: string;
-  evenement_redoute: string;
+  evenement_redoute?: string | null;
   consequence_potentielle: string;
 
   // Cotation initiale — jamais modifiée, sert de référence "avant"
