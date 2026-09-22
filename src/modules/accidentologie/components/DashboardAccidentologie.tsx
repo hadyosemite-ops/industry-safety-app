@@ -435,16 +435,16 @@ export function DashboardAccidentologie() {
         </div>
 
         {/* ── Onglets type (filtre secondaire) ── */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-[color:var(--text-muted)] font-medium">Filtrer par type :</span>
-          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--bg-hover)] ml-auto">
+        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto no-scrollbar -mx-1 px-1">
+          <span className="text-xs text-[color:var(--text-muted)] font-medium flex-shrink-0">Filtrer par type :</span>
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--bg-hover)] flex-shrink-0">
             <button type="button" onClick={() => changerVue('carte')} aria-label="Affichage en cartes" title="Affichage en cartes"
-              className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+              className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap',
                 vue === 'carte' ? 'bg-[var(--bg-elevated)] text-[color:var(--text-primary)] shadow-sm' : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]')}>
               <LayoutGrid size={13} />Cartes
             </button>
             <button type="button" onClick={() => changerVue('liste')} aria-label="Affichage en liste" title="Affichage en liste"
-              className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+              className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap',
                 vue === 'liste' ? 'bg-[var(--bg-elevated)] text-[color:var(--text-primary)] shadow-sm' : 'text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]')}>
               <List size={13} />Liste
             </button>
@@ -460,14 +460,14 @@ export function DashboardAccidentologie() {
                 type="button"
                 onClick={() => setOnglet(isActive ? 'tous' : type)}
                 className={clsx(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all',
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all whitespace-nowrap flex-shrink-0',
                   isActive
                     ? 'bg-[#0077aa] text-white border-[#00d4ff]'
                     : 'bg-[var(--bg-hover)] text-[color:var(--text-secondary)] border-[var(--border)] hover:border-[var(--border)]',
                 )}
               >
                 <span>{ICONES_TYPE[type]}</span>
-                <span className="hidden sm:inline">{LABELS_TYPE[type]}</span>
+                <span>{LABELS_TYPE[type]}</span>
                 <span className="bg-[var(--bg-hover)] text-[color:var(--text-secondary)] px-1.5 rounded-full text-xs"
                   style={isActive ? { background: 'rgba(255,255,255,0.2)', color: 'white' } : {}}>
                   {cnt}
