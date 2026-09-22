@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Pencil, UserCog, UserPlus, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuth } from '@/contexts/AuthContext';
@@ -236,7 +237,7 @@ function UtilisateurRolesModal({
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="modal-overlay fixed" onClick={pending ? undefined : onClose} />
       <div className="relative min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -318,7 +319,8 @@ function UtilisateurRolesModal({
         </form>
       </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -357,7 +359,7 @@ function CreateUtilisateurModal({
     if (error) setErreur(error);
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="modal-overlay fixed" onClick={pending ? undefined : onClose} />
       <div className="relative min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -476,6 +478,7 @@ function CreateUtilisateurModal({
         </form>
       </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

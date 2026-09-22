@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Pencil, Trash2, HardHat, Phone, Mail } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { UtilisateurProfile } from '@/contexts/AuthContext';
@@ -248,7 +249,7 @@ function IntervenantModal({
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="modal-overlay fixed" onClick={pending ? undefined : onClose} />
       <div className="relative min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -339,6 +340,7 @@ function IntervenantModal({
         </form>
       </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

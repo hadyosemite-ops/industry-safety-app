@@ -143,13 +143,13 @@ export function StepInformationsGenerales({ data, erreurs, onChange }: Props) {
 
   return (
     <div className="space-y-8">
-      {/* En-tête section — sur le fond sombre fixe du wizard, jamais thémé */}
+      {/* En-tête section — suit le thème clair/sombre du wizard */}
       <div>
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+        <h2 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
           <Building2 size={20} className="text-[#4de6ff]" />
           Informations générales
         </h2>
-        <p className="text-sm text-white/60 mt-1">
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
           Décrivez les travaux et définissez le cadre général de l'autorisation.
         </p>
       </div>

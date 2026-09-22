@@ -217,8 +217,8 @@ export function StepPermis({ permis, erreurs, onChange }: Props) {
       {/* En-tête */}
       <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">Permis de travail</h2>
-          <p className="text-sm text-white/60 mt-1">
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Permis de travail</h2>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             Ajoutez un permis par type de danger. L'Animateur de Sécurité validera chacun sur le terrain.
           </p>
         </div>

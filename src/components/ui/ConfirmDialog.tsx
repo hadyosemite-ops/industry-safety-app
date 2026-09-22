@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useModalA11y } from '@/hooks/useModalA11y';
@@ -42,7 +43,7 @@ export function ConfirmDialog({
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="modal-overlay" onClick={pending ? undefined : onCancel} />
       <div
@@ -86,6 +87,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -69,8 +69,8 @@ export function StepRevue({ data, enCours, onSoumettre }: Props) {
           <Shield size={22} className="text-white" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white">Revue & Soumission</h2>
-          <p className="text-sm text-white/60 mt-1">
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Revue & Soumission</h2>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             Vérifiez l'ensemble des informations avant de soumettre l'autorisation de travail.
           </p>
         </div>
@@ -284,7 +284,7 @@ export function StepRevue({ data, enCours, onSoumettre }: Props) {
             'Le Responsable de Zone donne l\'approbation finale (GO)',
             'Les intervenants peuvent démarrer les travaux',
           ].map((step, idx) => (
-            <li key={idx} className="flex items-start gap-2 text-sm text-white/60">
+            <li key={idx} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-navy-600 text-white text-xs flex items-center justify-center font-bold mt-0.5">
                 {idx + 1}
               </span>
